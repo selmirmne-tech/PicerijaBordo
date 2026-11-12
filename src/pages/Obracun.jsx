@@ -335,13 +335,13 @@ export default function Obracun() {
         });
       }
       setDialog(null); setDialogError(""); setNotice(dialog.type === "new" ? "Artikal je dodat." : "Artikal je izmijenjen.");
-      if (dialog.type === "new") showSuccessAnimation("Artikal je dodat");
+      showSuccessAnimation(dialog.type === "new" ? "Artikal je dodat" : "Artikal izmijenjen");
     } catch (saveError) { setDialogError(`Izmjena nije sačuvana: ${saveError.message}`); }
     finally { setSaving(false); }
   };
   const deleteItem = async (item) => {
     if (!window.confirm(`Ukloniti „${item.naziv}” iz trenutnog stanja artikala? Istorijski obračuni ostaju.`)) return;
-    try { await update(artikliRestoran(), { [item.id]: null }); setNotice("Artikal je obrisan."); }
+    try { await update(artikliRestoran(), { [item.id]: null }); setNotice("Artikal je obrisan."); showSuccessAnimation("Artikal obrisan"); }
     catch (deleteError) { setError(`Brisanje nije uspjelo: ${deleteError.message}`); }
   };
 

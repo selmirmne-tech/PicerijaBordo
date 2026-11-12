@@ -84,6 +84,7 @@ export default function App() {
   const [versionBlockReason, setVersionBlockReason] = useState("");
   const [internetAvailable, setInternetAvailable] = useState(() => navigator.onLine);
   const [databaseConnected, setDatabaseConnected] = useState(false);
+  const [connectionMessageVisible, setConnectionMessageVisible] = useState(false);
   const [firebaseAuthUser, setFirebaseAuthUser] = useState(null);
   const [firebaseAuthReady, setFirebaseAuthReady] = useState(false);
   const firebaseAuthUid = firebaseAuthUser?.uid ?? null;
@@ -93,17 +94,38 @@ export default function App() {
   const connectionMessage = !internetAvailable ? "Nema konekcije" : "Nema konekcije, povezujem se...";
 
   useEffect(() => {
+    let messageTimer;
+    const showMessageAfterDelay = () => {
+      window.clearTimeout(messageTimer);
+      messageTimer = window.setTimeout(() => setConnectionMessageVisible(true), 2500);
+    };
+    const hideMessage = () => {
+      window.clearTimeout(messageTimer);
+      setConnectionMessageVisible(false);
+    };
     const handleOnline = () => setInternetAvailable(true);
     const handleOffline = () => {
       setInternetAvailable(false);
       setDatabaseConnected(false);
+      setConnectionMessageVisible(true);
     };
+    if (navigator.onLine) showMessageAfterDelay();
+    else setConnectionMessageVisible(true);
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
     const unsubscribe = onValue(infoConnected(), (snapshot) => {
-      setDatabaseConnected(snapshot.val() === true);
-    }, () => setDatabaseConnected(false));
+      const connected = snapshot.val() === true;
+      setDatabaseConnected(connected);
+      if (connected && navigator.onLine) hideMessage();
+      else if (navigator.onLine) showMessageAfterDelay();
+      else setConnectionMessageVisible(true);
+    }, () => {
+      setDatabaseConnected(false);
+      if (navigator.onLine) showMessageAfterDelay();
+      else setConnectionMessageVisible(true);
+    });
     return () => {
+      window.clearTimeout(messageTimer);
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
       unsubscribe();
@@ -305,8 +327,8 @@ useEffect(() => {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>}
       </div>
-      {connectionUnavailable && <>
-        <div aria-hidden="true" style={{ position: "fixed", zIndex: 9998, inset: 0, background: "rgba(255, 193, 7, .22)", backdropFilter: "blur(2px)", cursor: "wait" }} />
+      {connectionUnavailable && <div aria-hidden="true" style={{ position: "fixed", zIndex: 9998, inset: 0, background: "rgba(255, 193, 7, .22)", backdropFilter: "blur(2px)", cursor: "wait" }} />}
+      {connectionUnavailable && connectionMessageVisible && <>
         <div role="status" aria-live="polite" style={{ position: "fixed", zIndex: 9999, top: 10, left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, width: "max-content", maxWidth: "calc(100% - 24px)", boxSizing: "border-box", border: "1px solid #e6b800", borderRadius: 12, padding: "10px 16px", background: "#fff3cd", color: "#664d03", boxShadow: "0 4px 16px #0002", fontWeight: 800, textAlign: "center", whiteSpace: "normal" }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path className="wifi-wave wifi-wave-1" d="M2.5 8.5a15 15 0 0 1 19 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
