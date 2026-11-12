@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { onValue } from "firebase/database";
 import { onAuthStateChanged } from "firebase/auth";
@@ -49,6 +49,7 @@ const ProtectedRoute = ({ user, children, allowedRoles }) => {
 
 function DashboardBackGuard() {
   const location = useLocation();
+  const navigate = useNavigate();
   const lastGuardedLocation = useRef("");
   const isDashboard = (pathname) => pathname.replace(/\/+$/, "").toLowerCase().endsWith("/dashboard");
 
@@ -64,18 +65,15 @@ function DashboardBackGuard() {
   }, [location.key, location.pathname]);
 
   useEffect(() => {
-    const keepDashboardOpen = () => {
-      if (!isDashboard(window.location.pathname)) return;
-      const state = window.history.state;
-      window.history.pushState({
-        ...(state && typeof state === "object" ? state : {}),
-        dashboardHistoryGuard: true,
-      }, "", window.location.href);
-    };
+    if (!isDashboard(location.pathname)) return undefined;
+
+    // A browser Back action can otherwise leave Dashboard, especially when it
+    // was opened directly. Replace the popped destination with Dashboard.
+    const keepDashboardOpen = () => navigate("/dashboard", { replace: true });
 
     window.addEventListener("popstate", keepDashboardOpen);
     return () => window.removeEventListener("popstate", keepDashboardOpen);
-  }, []);
+  }, [location.pathname, navigate]);
 
   return null;
 }
