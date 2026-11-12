@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { onValue } from "firebase/database";
+import { onAuthStateChanged } from "firebase/auth";
 
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -16,6 +17,7 @@ import About from "./pages/about";
 import Uslovi from "./pages/Uslovi";
 import Politika from "./pages/Politika";
 import { appUpdateRestoran } from "./firebase/refs";
+import { auth } from "./firebase/config";
 import { APP_VERSION } from "./config/appVersion";
 
 const getUser = () => {
@@ -82,7 +84,32 @@ export default function App() {
   
   const [user, setUser] = useState(getUser());
   const [versionBlockReason, setVersionBlockReason] = useState("");
+  const [versionCheckDone, setVersionCheckDone] = useState(false);
+  const [firebaseAuthUser, setFirebaseAuthUser] = useState(null);
+  const [firebaseAuthReady, setFirebaseAuthReady] = useState(false);
+  const firebaseAuthUid = firebaseAuthUser?.uid ?? null;
+
+  useEffect(() => onAuthStateChanged(auth, (authUser) => {
+    setFirebaseAuthUser(authUser);
+    setFirebaseAuthReady(true);
+  }), []);
+
   useEffect(() => {
+    if (!user || !firebaseAuthReady) {
+      setVersionBlockReason("");
+      setVersionCheckDone(false);
+      return;
+    }
+
+    if (!firebaseAuthUid) {
+      localStorage.removeItem("user");
+      setUser(null);
+      setVersionBlockReason("");
+      setVersionCheckDone(false);
+      return;
+    }
+
+    setVersionCheckDone(false);
     const unsubscribe = onValue(appUpdateRestoran(), (snapshot) => {
       const version = String(snapshot.child("versionCode").val() ?? "").trim();
       if (!version) {
@@ -92,12 +119,14 @@ export default function App() {
       } else {
         setVersionBlockReason("");
       }
+      setVersionCheckDone(true);
     }, (error) => {
       console.error("Version check failed:", error);
+      setVersionCheckDone(true);
     });
 
     return unsubscribe;
-  }, []);
+  }, [user, firebaseAuthReady, firebaseAuthUid]);
 
 useEffect(() => {
   const syncUser = () => setUser(getUser());
@@ -124,7 +153,11 @@ useEffect(() => {
   return (
     <BrowserRouter>
       <DashboardBackGuard />
-      {versionBlockReason ? (
+      {user && (!firebaseAuthReady || !versionCheckDone) ? (
+        <main role="status" aria-live="polite" style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, background: "#f4f7f6", fontFamily: "Inter,system-ui,sans-serif", color: "#17231f" }}>
+          Provjera verzije WEB aplikacije…
+        </main>
+      ) : user && versionBlockReason ? (
         <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, background: "#f4f7f6", fontFamily: "Inter,system-ui,sans-serif", color: "#17231f" }}>
           <section role="alert" aria-labelledby="version-block-title" style={{ width: "100%", maxWidth: 480, padding: 28, borderRadius: 18, background: "white", border: "1px solid #e2eae6", boxShadow: "0 18px 50px #173d3118", textAlign: "center" }}>
             <div aria-hidden="true" style={{ width: 48, height: 48, margin: "0 auto 14px", display: "grid", placeItems: "center", borderRadius: 14, background: "#fff0ef", color: "#a32d31", fontSize: 25, fontWeight: 800 }}>!</div>
