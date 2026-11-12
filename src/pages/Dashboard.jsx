@@ -271,7 +271,6 @@ Kontaktirajte administratora
     <div style={{ minHeight: "100vh", boxSizing: "border-box", background: "#f3f6f5", padding: 10, display: "flex", flexDirection: "column" }}>
       <header style={{ width: "100%", boxSizing: "border-box", margin: "0 0 10px", padding: "14px 18px", borderRadius: 14, background: "linear-gradient(115deg, #0b6b5b, #008577)", color: "white", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, boxShadow: "0 10px 28px rgba(0,91,77,.18)" }}>
         <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 12 }}>
-          <div aria-hidden="true" style={{ width: 42, height: 42, flex: "0 0 42px", borderRadius: 14, display: "grid", placeItems: "center", background: "rgba(255,255,255,.18)", fontSize: 18, fontWeight: 850 }}>{String(user?.ime || "U").trim().slice(0, 1).toLocaleUpperCase()}</div>
           <div style={{ minWidth: 0, display: "grid", gap: 3 }}>
             <strong style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 15 }}>{user?.ime || "Korisnik"}</strong>
             <span style={{ color: "rgba(255,255,255,.78)", fontSize: 12 }}>{user?.titula || "Nalog"}</span>
