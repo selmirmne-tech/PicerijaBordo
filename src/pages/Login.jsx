@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   signInWithEmailAndPassword,
   setPersistence,
   browserLocalPersistence,
-  onAuthStateChanged,
   createUserWithEmailAndPassword,
 } from "firebase/auth";
 
@@ -29,69 +28,6 @@ export default function Login() {
   const [mode, setMode] = useState("login");
 
   const navigate = useNavigate();
-
- // =====================================================
-// AUTO LOGIN
-// =====================================================
-useEffect(() => {
-  const autoLogin = async () => {
-    try {
-      await setPersistence(auth, browserLocalPersistence);
-
-      // Ako je korisnik već prijavljen, ne prijavljuj ponovo
-      if (auth.currentUser) {
-        const snapshot = await get(
-          child(usersRestoran(), auth.currentUser.uid)
-        );
-
-        if (snapshot.exists()) {
-          const fullUser = {
-            ...snapshot.val(),
-            uid: auth.currentUser.uid,
-          };
-
-          localStorage.setItem("user", JSON.stringify(fullUser));
-          window.dispatchEvent(new Event("user-login"));
-          navigate("/dashboard");
-          return;
-        }
-      }
-
-      // Automatska prijava test korisnika
-      const userCred = await signInWithEmailAndPassword(
-        auth,
-        "test@vasrestoran.com",
-        "123456"
-      );
-
-      const uid = userCred.user.uid;
-
-      const snapshot = await get(child(usersRestoran(), uid));
-
-      if (!snapshot.exists()) {
-        alert("Test korisnik ne postoji u bazi!");
-        return;
-      }
-
-      const fullUser = {
-        ...snapshot.val(),
-        uid,
-      };
-
-      localStorage.setItem("user", JSON.stringify(fullUser));
-      window.dispatchEvent(new Event("user-login"));
-
-      navigate("/dashboard");
-
-      saveFCMToken(uid);
-
-    } catch (error) {
-      console.error("AUTO LOGIN ERROR:", error.code, error.message);
-    }
-  };
-
-  autoLogin();
-}, []);
 
   // =====================================================
   // FCM TOKEN
