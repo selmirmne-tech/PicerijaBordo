@@ -82,11 +82,11 @@ export default function App() {
   
   const [user, setUser] = useState(getUser());
   const [versionBlockReason, setVersionBlockReason] = useState("");
-  const [versionCheckDone, setVersionCheckDone] = useState(false);
   const [firebaseAuthUser, setFirebaseAuthUser] = useState(null);
   const [firebaseAuthReady, setFirebaseAuthReady] = useState(false);
   const firebaseAuthUid = firebaseAuthUser?.uid ?? null;
   const verifiedUser = firebaseAuthReady && firebaseAuthUid ? user : null;
+  const activeUser = firebaseAuthReady ? verifiedUser : user;
 
   useEffect(() => onAuthStateChanged(auth, (authUser) => {
     setFirebaseAuthUser(authUser);
@@ -96,17 +96,14 @@ export default function App() {
   useEffect(() => {
     if (!user || !firebaseAuthReady) {
       setVersionBlockReason("");
-      setVersionCheckDone(false);
       return;
     }
 
     if (!firebaseAuthUid) {
       setVersionBlockReason("");
-      setVersionCheckDone(true);
       return;
     }
 
-    setVersionCheckDone(false);
     const unsubscribe = onValue(appUpdateRestoran(), (snapshot) => {
       const version = String(snapshot.child("versionCode").val() ?? "").trim();
       if (!version) {
@@ -116,10 +113,8 @@ export default function App() {
       } else {
         setVersionBlockReason("");
       }
-      setVersionCheckDone(true);
     }, (error) => {
       console.error("Version check failed:", error);
-      setVersionCheckDone(true);
     });
 
     return unsubscribe;
@@ -150,15 +145,7 @@ useEffect(() => {
   return (
     <BrowserRouter>
       <DashboardBackGuard />
-      {user && !firebaseAuthReady ? (
-        <main role="status" aria-live="polite" style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, background: "#f4f7f6", fontFamily: "Inter,system-ui,sans-serif", color: "#17231f" }}>
-          Provjera prijave…
-        </main>
-      ) : verifiedUser && !versionCheckDone ? (
-        <main role="status" aria-live="polite" style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, background: "#f4f7f6", fontFamily: "Inter,system-ui,sans-serif", color: "#17231f" }}>
-          Provjera verzije WEB aplikacije…
-        </main>
-      ) : verifiedUser && versionBlockReason ? (
+      {verifiedUser && versionBlockReason ? (
         <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, background: "#f4f7f6", fontFamily: "Inter,system-ui,sans-serif", color: "#17231f" }}>
           <section role="alert" aria-labelledby="version-block-title" style={{ width: "100%", maxWidth: 480, padding: 28, borderRadius: 18, background: "white", border: "1px solid #e2eae6", boxShadow: "0 18px 50px #173d3118", textAlign: "center" }}>
             <div aria-hidden="true" style={{ width: 48, height: 48, margin: "0 auto 14px", display: "grid", placeItems: "center", borderRadius: 14, background: "#fff0ef", color: "#a32d31", fontSize: 25, fontWeight: 800 }}>!</div>
@@ -172,7 +159,7 @@ useEffect(() => {
         <Route
           path="/"
           element={
-            verifiedUser ? <Navigate to="/dashboard" replace /> : <Login />
+            activeUser ? <Navigate to="/dashboard" replace /> : <Login />
           }
         />
 
@@ -180,7 +167,7 @@ useEffect(() => {
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute user={verifiedUser}>
+            <ProtectedRoute user={activeUser}>
               <Dashboard />
             </ProtectedRoute>
           }
@@ -189,7 +176,7 @@ useEffect(() => {
         <Route
           path="/stats"
           element={
-            <ProtectedRoute user={verifiedUser} allowedRoles={["Administrator"]}>
+            <ProtectedRoute user={activeUser} allowedRoles={["Administrator"]}>
               <Stats />
             </ProtectedRoute>
           }
@@ -198,7 +185,7 @@ useEffect(() => {
         <Route
           path="/Racuni"
           element={
-            <ProtectedRoute user={verifiedUser}>
+            <ProtectedRoute user={activeUser}>
               <Racuni />
             </ProtectedRoute>
           }
@@ -207,7 +194,7 @@ useEffect(() => {
         <Route
           path="/kitchen"
           element={
-            <ProtectedRoute user={verifiedUser}>
+            <ProtectedRoute user={activeUser}>
               <Kitchen />
             </ProtectedRoute>
           }
@@ -216,7 +203,7 @@ useEffect(() => {
         <Route
           path="/mjesecniIzvjestaj"
           element={
-            <ProtectedRoute user={verifiedUser} allowedRoles={["Administrator"]}>
+            <ProtectedRoute user={activeUser} allowedRoles={["Administrator"]}>
               <MjesecniIzvjestaj />
             </ProtectedRoute>
           }
@@ -225,7 +212,7 @@ useEffect(() => {
         <Route
           path="/konobari"
           element={
-            <ProtectedRoute user={verifiedUser} allowedRoles={["Administrator"]}>
+            <ProtectedRoute user={activeUser} allowedRoles={["Administrator"]}>
               <Konobari />
             </ProtectedRoute>
           }
@@ -234,7 +221,7 @@ useEffect(() => {
        <Route
   path="/order"
   element={
-    <ProtectedRoute user={verifiedUser}>
+    <ProtectedRoute user={activeUser}>
       <Naruci />
     </ProtectedRoute>
   }
@@ -243,7 +230,7 @@ useEffect(() => {
         <Route
           path="/info"
           element={
-            <ProtectedRoute user={verifiedUser}>
+            <ProtectedRoute user={activeUser}>
               <h1>Informacije</h1>
             </ProtectedRoute>
           }
@@ -252,7 +239,7 @@ useEffect(() => {
         <Route
           path="/about"
           element={
-            <ProtectedRoute user={verifiedUser}>
+            <ProtectedRoute user={activeUser}>
               <About />
             </ProtectedRoute>
           }
@@ -264,7 +251,7 @@ useEffect(() => {
         <Route
           path="/admin"
           element={
-            <ProtectedRoute user={verifiedUser} allowedRoles={["Administrator"]}>
+            <ProtectedRoute user={activeUser} allowedRoles={["Administrator"]}>
               <Admin />
             </ProtectedRoute>
           }
@@ -273,7 +260,7 @@ useEffect(() => {
         <Route
           path="/obracun"
           element={
-            <ProtectedRoute user={verifiedUser} allowedRoles={["Administrator", "Konobar"]}>
+            <ProtectedRoute user={activeUser} allowedRoles={["Administrator", "Konobar"]}>
               <Obracun />
             </ProtectedRoute>
           }
