@@ -54,38 +54,31 @@ function DashboardBackGuard() {
   const navigate = useNavigate();
   const navigateRef = useRef(navigate);
   const dashboardActiveRef = useRef(false);
-  const wasDashboardRef = useRef(false);
+  const dashboardGuardAddedRef = useRef(false);
   navigateRef.current = navigate;
 
   useLayoutEffect(() => {
     const isDashboard = isDashboardPath(location.pathname);
     dashboardActiveRef.current = isDashboard;
-    if (isDashboard && !wasDashboardRef.current) {
-      for (let index = 0; index < 2; index++) {
-        const state = window.history.state;
-        window.history.pushState({
-          ...(state && typeof state === "object" ? state : {}),
-          dashboardHistoryGuard: true,
-        }, "", window.location.href);
-      }
+    if (!isDashboard) {
+      dashboardGuardAddedRef.current = false;
+      return;
     }
-    wasDashboardRef.current = isDashboard;
-  }, [location.key, location.pathname]);
+    if (!dashboardGuardAddedRef.current) {
+      dashboardGuardAddedRef.current = true;
+      navigate(`${location.pathname}${location.search}${location.hash}`, {
+        state: { dashboardHistoryGuard: true },
+      });
+    }
+  }, [location.hash, location.pathname, location.search, navigate]);
 
   useEffect(() => {
     const keepDashboardOpen = () => {
       if (!dashboardActiveRef.current) return;
-      if (!isDashboardPath(window.location.pathname)) {
-        navigateRef.current("/dashboard", { replace: true });
-      }
-      const state = window.history.state;
       const currentPath = isDashboardPath(window.location.pathname)
         ? `${window.location.pathname}${window.location.search}${window.location.hash}`
         : "/dashboard";
-      window.history.pushState({
-        ...(state && typeof state === "object" ? state : {}),
-        dashboardHistoryGuard: true,
-      }, "", currentPath);
+      navigateRef.current(currentPath, { state: { dashboardHistoryGuard: true } });
     };
     window.addEventListener("popstate", keepDashboardOpen);
     return () => window.removeEventListener("popstate", keepDashboardOpen);
@@ -109,7 +102,8 @@ export default function App() {
   const firebaseAuthUid = firebaseAuthUser?.uid ?? null;
   const verifiedUser = firebaseAuthReady && firebaseAuthUid ? user : null;
   const activeUser = firebaseAuthReady ? verifiedUser : user;
-  const connectionUnavailable = !internetAvailable || (!databaseConnected && (connectionStartupTimedOut || (hasConnectedToDatabase.current && connectionLossConfirmed)));
+  const connectionUnavailable = (connectionLossConfirmed && (!internetAvailable || !databaseConnected))
+    || (!databaseConnected && connectionStartupTimedOut);
   const connectionMessage = !internetAvailable ? "Nema konekcije" : "Nema konekcije, povezujem se...";
 
   useEffect(() => {
@@ -141,14 +135,10 @@ export default function App() {
     const handleOffline = () => {
       setInternetAvailable(false);
       setDatabaseConnected(false);
-      setConnectionLossConfirmed(true);
-      setConnectionMessageVisible(true);
+      confirmLostConnectionAfterDelay();
     };
     if (navigator.onLine) waitForInitialConnection();
-    else {
-      setConnectionStartupTimedOut(true);
-      setConnectionMessageVisible(true);
-    }
+    else confirmLostConnectionAfterDelay();
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
     const unsubscribe = onValue(infoConnected(), (snapshot) => {
@@ -159,9 +149,7 @@ export default function App() {
         setConnectionStartupTimedOut(false);
         hideMessage();
       } else if (!navigator.onLine) {
-        setConnectionStartupTimedOut(true);
-        setConnectionLossConfirmed(true);
-        setConnectionMessageVisible(true);
+        confirmLostConnectionAfterDelay();
       } else if (hasConnectedToDatabase.current) {
         confirmLostConnectionAfterDelay();
       } else {
@@ -171,11 +159,7 @@ export default function App() {
       setDatabaseConnected(false);
       if (hasConnectedToDatabase.current) confirmLostConnectionAfterDelay();
       else if (navigator.onLine) waitForInitialConnection();
-      else {
-        setConnectionStartupTimedOut(true);
-        setConnectionLossConfirmed(true);
-        setConnectionMessageVisible(true);
-      }
+      else confirmLostConnectionAfterDelay();
     });
     return () => {
       window.clearTimeout(startupTimer);
