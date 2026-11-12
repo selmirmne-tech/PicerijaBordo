@@ -47,33 +47,49 @@ const ProtectedRoute = ({ user, children, allowedRoles }) => {
   return children;
 };
 
+const isDashboardPath = (pathname) => pathname.replace(/\/+$/, "").toLowerCase().endsWith("/dashboard");
+
 function DashboardBackGuard() {
   const location = useLocation();
   const navigate = useNavigate();
-  const lastGuardedLocation = useRef("");
-  const isDashboard = (pathname) => pathname.replace(/\/+$/, "").toLowerCase().endsWith("/dashboard");
+  const navigateRef = useRef(navigate);
+  const dashboardActiveRef = useRef(false);
+  const wasDashboardRef = useRef(false);
+  navigateRef.current = navigate;
 
   useLayoutEffect(() => {
-    if (!isDashboard(location.pathname)) return;
-    if (lastGuardedLocation.current === location.key) return;
-    lastGuardedLocation.current = location.key;
-    const state = window.history.state;
-    window.history.pushState({
-      ...(state && typeof state === "object" ? state : {}),
-      dashboardHistoryGuard: true,
-    }, "", window.location.href);
+    const isDashboard = isDashboardPath(location.pathname);
+    dashboardActiveRef.current = isDashboard;
+    if (isDashboard && !wasDashboardRef.current) {
+      for (let index = 0; index < 2; index++) {
+        const state = window.history.state;
+        window.history.pushState({
+          ...(state && typeof state === "object" ? state : {}),
+          dashboardHistoryGuard: true,
+        }, "", window.location.href);
+      }
+    }
+    wasDashboardRef.current = isDashboard;
   }, [location.key, location.pathname]);
 
   useEffect(() => {
-    if (!isDashboard(location.pathname)) return undefined;
-
-    // A browser Back action can otherwise leave Dashboard, especially when it
-    // was opened directly. Replace the popped destination with Dashboard.
-    const keepDashboardOpen = () => navigate("/dashboard", { replace: true });
-
+    const keepDashboardOpen = () => {
+      if (!dashboardActiveRef.current) return;
+      if (!isDashboardPath(window.location.pathname)) {
+        navigateRef.current("/dashboard", { replace: true });
+      }
+      const state = window.history.state;
+      const currentPath = isDashboardPath(window.location.pathname)
+        ? `${window.location.pathname}${window.location.search}${window.location.hash}`
+        : "/dashboard";
+      window.history.pushState({
+        ...(state && typeof state === "object" ? state : {}),
+        dashboardHistoryGuard: true,
+      }, "", currentPath);
+    };
     window.addEventListener("popstate", keepDashboardOpen);
     return () => window.removeEventListener("popstate", keepDashboardOpen);
-  }, [location.pathname, navigate]);
+  }, []);
 
   return null;
 }
@@ -85,6 +101,7 @@ export default function App() {
   const [internetAvailable, setInternetAvailable] = useState(() => navigator.onLine);
   const [databaseConnected, setDatabaseConnected] = useState(false);
   const [connectionStartupTimedOut, setConnectionStartupTimedOut] = useState(false);
+  const [connectionLossConfirmed, setConnectionLossConfirmed] = useState(false);
   const [connectionMessageVisible, setConnectionMessageVisible] = useState(false);
   const hasConnectedToDatabase = useRef(false);
   const [firebaseAuthUser, setFirebaseAuthUser] = useState(null);
@@ -92,11 +109,12 @@ export default function App() {
   const firebaseAuthUid = firebaseAuthUser?.uid ?? null;
   const verifiedUser = firebaseAuthReady && firebaseAuthUid ? user : null;
   const activeUser = firebaseAuthReady ? verifiedUser : user;
-  const connectionUnavailable = !internetAvailable || (!databaseConnected && (hasConnectedToDatabase.current || connectionStartupTimedOut));
+  const connectionUnavailable = !internetAvailable || (!databaseConnected && (connectionStartupTimedOut || (hasConnectedToDatabase.current && connectionLossConfirmed)));
   const connectionMessage = !internetAvailable ? "Nema konekcije" : "Nema konekcije, povezujem se...";
 
   useEffect(() => {
     let startupTimer;
+    let connectionLossTimer;
     const waitForInitialConnection = () => {
       window.clearTimeout(startupTimer);
       startupTimer = window.setTimeout(() => {
@@ -108,12 +126,22 @@ export default function App() {
     };
     const hideMessage = () => {
       window.clearTimeout(startupTimer);
+      window.clearTimeout(connectionLossTimer);
+      setConnectionLossConfirmed(false);
       setConnectionMessageVisible(false);
+    };
+    const confirmLostConnectionAfterDelay = () => {
+      window.clearTimeout(connectionLossTimer);
+      connectionLossTimer = window.setTimeout(() => {
+        setConnectionLossConfirmed(true);
+        setConnectionMessageVisible(true);
+      }, 1800);
     };
     const handleOnline = () => setInternetAvailable(true);
     const handleOffline = () => {
       setInternetAvailable(false);
       setDatabaseConnected(false);
+      setConnectionLossConfirmed(true);
       setConnectionMessageVisible(true);
     };
     if (navigator.onLine) waitForInitialConnection();
@@ -132,23 +160,26 @@ export default function App() {
         hideMessage();
       } else if (!navigator.onLine) {
         setConnectionStartupTimedOut(true);
+        setConnectionLossConfirmed(true);
         setConnectionMessageVisible(true);
       } else if (hasConnectedToDatabase.current) {
-        setConnectionMessageVisible(true);
+        confirmLostConnectionAfterDelay();
       } else {
         waitForInitialConnection();
       }
     }, () => {
       setDatabaseConnected(false);
-      if (hasConnectedToDatabase.current) setConnectionMessageVisible(true);
+      if (hasConnectedToDatabase.current) confirmLostConnectionAfterDelay();
       else if (navigator.onLine) waitForInitialConnection();
       else {
         setConnectionStartupTimedOut(true);
+        setConnectionLossConfirmed(true);
         setConnectionMessageVisible(true);
       }
     });
     return () => {
       window.clearTimeout(startupTimer);
+      window.clearTimeout(connectionLossTimer);
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
       unsubscribe();

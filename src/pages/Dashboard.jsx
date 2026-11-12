@@ -168,13 +168,13 @@ useEffect(() => {
   }, []);
 
   const Card = ({ icon, title, onClick }) => (
-    <button type="button" onClick={onClick} style={{
+    <button className="dashboard-card" type="button" onClick={onClick} style={{
       width: "100%", minWidth: 0, minHeight: 0, height: "100%", boxSizing: "border-box", border: "1px solid #e5ebe8", borderRadius: 18,
       padding: 16, background: "#fff", boxShadow: "0 4px 16px rgba(23,61,49,.06)",
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
       gap: 9, color: "#173d31", cursor: "pointer", font: "inherit", transition: "transform .18s ease, box-shadow .18s ease",
     }}>
-      <div style={{ fontSize: 32 }}>{icon}</div>
+      <div className="dashboard-card-icon" style={{ fontSize: 32 }}>{icon}</div>
       <div style={{ fontSize: 15, fontWeight: 700, textAlign: "center" }}>{title}</div>
     </button>
   );
@@ -268,7 +268,7 @@ Kontaktirajte administratora
   
   
   
-    <div style={{ minHeight: "100vh", boxSizing: "border-box", background: "#f3f6f5", padding: 10, display: "flex", flexDirection: "column" }}>
+    <div style={{ height: "100dvh", minHeight: "100vh", overflow: "hidden", boxSizing: "border-box", background: "#f3f6f5", padding: 10, display: "flex", flexDirection: "column" }}>
       <header style={{ width: "100%", boxSizing: "border-box", margin: "0 0 10px", padding: "14px 18px", borderRadius: 14, background: "linear-gradient(115deg, #0b6b5b, #008577)", color: "white", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, boxShadow: "0 10px 28px rgba(0,91,77,.18)" }}>
         <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ minWidth: 0, display: "grid", gap: 3 }}>
@@ -303,7 +303,7 @@ Kontaktirajte administratora
         </div>
       </header>
 
-      <div style={{ width: "100%", flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gridTemplateRows: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+      <div className="dashboard-cards" style={{ width: "100%", flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gridTemplateRows: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
         <Card icon="📄✏️" title="Naruči hranu" onClick={() => navigate("/order")} />
         <Card icon="👨‍🍳" title="Kuhinja" onClick={() => navigate("/kitchen")} />
         <Card icon="📊" title="Statistika" onClick={openStats} />
