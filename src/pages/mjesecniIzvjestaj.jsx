@@ -14,9 +14,12 @@ const monthTitle = (key) => {
   return `${label.charAt(0).toLocaleUpperCase("sr-Latn")}${label.slice(1)} ${year}`;
 };
 
-const dateTitle = (year, month, day) =>
-  new Intl.DateTimeFormat("sr-Latn", { weekday: "long", day: "numeric", month: "long" })
-    .format(new Date(Number(year), Number(month) - 1, Number(day)));
+const weekdaysIjekavian = ["Nedjelja", "Ponedjeljak", "Utorak", "Srijeda", "Četvrtak", "Petak", "Subota"];
+const dateTitle = (year, month, day) => {
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
+  const monthName = new Intl.DateTimeFormat("sr-Latn", { month: "long" }).format(date);
+  return `${weekdaysIjekavian[date.getDay()]}, ${Number(day)}. ${monthName.charAt(0).toLocaleUpperCase("sr-Latn")}${monthName.slice(1)}`;
+};
 
 export default function MjesecniIzvjestaj() {
   const [months, setMonths] = useState([]);
@@ -96,32 +99,32 @@ export default function MjesecniIzvjestaj() {
   }, [selectedMonth, waiterDetails]);
 
   return (
-    <main style={{ minHeight: "100vh", padding: "22px 16px 48px", background: "#f4f7f6", color: "#17231f", fontFamily: "Inter,system-ui,sans-serif" }}>
-      <div style={{ maxWidth: 900, margin: "0 auto" }}>
-        <header style={{ background: "#fff", border: "1px solid #e2eae6", borderRadius: 18, padding: 20, marginBottom: 16, boxShadow: "0 8px 24px #173d310b" }}>
-          <h1 style={{ margin: 0, fontSize: 25 }}>Mjesečni izvještaj</h1>
-          <div style={{ marginTop: 5, color: "#718078", fontSize: 14 }}>Klikni na mjesec za detalje po danima.</div>
+    <main style={{ width: "100%", minHeight: "100vh", boxSizing: "border-box", padding: "clamp(12px, 2vw, 30px) clamp(8px, 2vw, 28px) 48px", background: "#f2f6f4", color: "#17231f", fontFamily: "Inter,system-ui,sans-serif" }}>
+      <div style={{ width: "100%", margin: "0 auto" }}>
+        <header style={{ background: "linear-gradient(120deg, #ffffff, #f4faf7)", border: "1px solid #dfe9e4", borderRadius: 18, padding: "clamp(16px, 2vw, 24px)", marginBottom: 16, boxShadow: "0 8px 24px rgba(23,61,49,.06)" }}>
+          <h1 style={{ margin: 0, fontSize: "clamp(22px, 2.4vw, 30px)", color: "#173d31" }}>Mjesečni izvještaj</h1>
+          <div style={{ marginTop: 5, color: "#64756e", fontSize: 14 }}>Pregled zarade konobara po mjesecima i danima.</div>
         </header>
         {error && <div role="alert" style={{ background: "#fff0ef", color: "#982e2a", padding: 13, borderRadius: 12, marginBottom: 12 }}>{error}</div>}
-        {!months.length && <section style={{ background: "white", padding: 18, borderRadius: 14 }}>Još nema mjesečnih izvještaja.</section>}
+        {!months.length && <section style={{ background: "white", padding: 20, border: "1px solid #dfe9e4", borderRadius: 14, color: "#64756e" }}>Još nema mjesečnih izvještaja.</section>}
         <div style={{ display: "grid", gap: 10 }}>
           {months.map((month) => {
             const expanded = selectedMonth === month.key;
             const [year, monthNumber] = month.key.split("-");
             return (
-              <section key={month.key} style={{ background: "white", border: "1px solid #e2eae6", borderRadius: 15, overflow: "hidden", boxShadow: "0 5px 16px #173d3109" }}>
-                <button type="button" aria-expanded={expanded} onClick={() => setSelectedMonth(expanded ? null : month.key)} style={{ width: "100%", border: 0, padding: "15px 17px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, textAlign: "left", cursor: "pointer", color: "inherit", background: expanded ? "#edf5f1" : "white" }}>
-                  <strong style={{ fontSize: 18 }}>{monthTitle(month.key)}</strong>
-                  <span style={{ display: "flex", alignItems: "center", gap: 12, whiteSpace: "nowrap" }}><strong style={{ color: "#176b55" }}>{money(month.total)}</strong><span aria-hidden="true">{expanded ? "▲" : "▼"}</span></span>
+              <section key={month.key} style={{ background: "white", border: "1px solid #d7e4dd", borderRadius: 17, overflow: "hidden", boxShadow: expanded ? "0 10px 28px rgba(23,61,49,.09)" : "0 4px 14px rgba(23,61,49,.05)" }}>
+                <button type="button" aria-expanded={expanded} onClick={() => setSelectedMonth(expanded ? null : month.key)} style={{ width: "100%", border: 0, padding: "clamp(12px, 1.5vw, 18px)", display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", alignItems: "center", gap: 12, textAlign: "left", cursor: "pointer", color: "inherit", background: expanded ? "linear-gradient(100deg, #e8f4ee, #f4faf7)" : "white" }}>
+                  <strong style={{ minWidth: 0, fontSize: "clamp(16px, 1.7vw, 21px)", color: "#173d31" }}>{monthTitle(month.key)}</strong>
+                  <span style={{ display: "flex", alignItems: "center", gap: 10, whiteSpace: "nowrap" }}><strong style={{ color: "#146c4a", background: "#e7f5ed", borderRadius: 999, padding: "7px 11px", fontSize: 14 }}>{money(month.total)}</strong><span aria-hidden="true" style={{ color: "#527064", fontSize: 13 }}>{expanded ? "▲" : "▼"}</span></span>
                 </button>
-                {expanded && <div style={{ display: "grid", gap: 10, padding: "4px 14px 16px" }}>
+                {expanded && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(clamp(240px, 30vw, 520px), 1fr))", alignItems: "start", gap: 12, padding: "4px clamp(8px, 1.4vw, 16px) 16px" }}>
                   {isLoading ? <p style={{ color: "#718078", margin: 6 }}>Učitavam izvještaj…</p> : days.length === 0 ? <p style={{ color: "#718078", margin: 6 }}>Nema dnevnih podataka za ovaj mjesec.</p> : days.map((day) => (
-                    <article key={day.key} style={{ border: "1px solid #e6eeea", borderRadius: 13, overflow: "hidden" }}>
-                      <div style={{ padding: "11px 13px", background: "#f7faf8", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                        <strong>{dateTitle(year, monthNumber, day.key)}</strong>
-                        <span style={{ textAlign: "right" }}><strong style={{ color: "#176b55" }}>Ukupno: {money(day.total)}</strong><small style={{ display: "block", color: "#718078", marginTop: 2 }}>{day.waiters.length} {day.waiters.length === 1 ? "konobar" : "konobara"}</small></span>
+                    <article key={day.key} style={{ minWidth: 0, border: "1px solid #dce8e2", borderRadius: 14, overflow: "hidden", background: "#fff", boxShadow: "0 3px 12px rgba(23,61,49,.04)" }}>
+                      <div style={{ padding: "12px 14px", background: "linear-gradient(110deg, #edf5ff, #f7faff)", display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", alignItems: "center", gap: 10 }}>
+                        <strong style={{ minWidth: 0, overflowWrap: "anywhere", color: "#203a5a", fontSize: 14 }}>{dateTitle(year, monthNumber, day.key)}</strong>
+                        <span style={{ textAlign: "right", whiteSpace: "nowrap" }}><strong style={{ color: "#1d4f91", fontSize: 14 }}>{money(day.total)}</strong><small style={{ display: "block", color: "#667b95", marginTop: 3 }}>{day.waiters.length} {day.waiters.length === 1 ? "konobar" : "konobara"}</small></span>
                       </div>
-                      {day.waiters.map((waiter) => <div key={waiter.uid} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto auto", gap: 12, alignItems: "center", padding: "10px 13px", borderTop: "1px solid #eef2f0", fontSize: 14 }}><span style={{ fontWeight: 650 }}>{waiter.name}</span><span style={{ color: "#718078", whiteSpace: "nowrap" }}>{waiter.orders} narudžbi</span><strong style={{ whiteSpace: "nowrap" }}>{money(waiter.revenue)}</strong></div>)}
+                      {day.waiters.map((waiter) => <div key={waiter.uid} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 10, alignItems: "center", padding: "10px 13px", borderTop: "1px solid #edf1ef", fontSize: 13 }}><span style={{ minWidth: 0, display: "grid", gap: 4 }}><strong style={{ color: "#253a32", overflowWrap: "anywhere" }}>{waiter.name}</strong><small style={{ color: "#718078" }}>{waiter.orders} {waiter.orders === 1 ? "narudžba" : "narudžbi"}</small></span><strong style={{ whiteSpace: "nowrap", color: "#146c4a", background: "#e9f6ef", borderRadius: 9, padding: "7px 9px", fontSize: 13 }}>{money(waiter.revenue)}</strong></div>)}
                     </article>
                   ))}
                 </div>}
