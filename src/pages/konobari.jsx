@@ -1,150 +1,64 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { onValue } from "firebase/database";
-import {
-  usersRestoran,
-  completeOrdersRestoran
-} from "../firebase/refs";
+import { completeOrdersRestoran } from "../firebase/refs";
+
+const parsePrice = (value) => {
+  const cleaned = String(value ?? "0").replace(",", ".").replace(/[^0-9.-]/g, "");
+  return Number(cleaned) || 0;
+};
+
+const formatMoney = (value) => `${value.toLocaleString("sr-Latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
 
 export default function Konobari() {
-	
-	
-	
-	
-	
-	
-	
-	useEffect(() => {
+  const [completedOrders, setCompletedOrders] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
     window.scrollTo(0, 0);
-  }, []);
-
-	
-	
-	
-	
-	
-	
-	
-  const [ordersData, setOrdersData] = useState({});
-  const [users, setUsers] = useState({});
-  const [list, setList] = useState([]);
-  const [total, setTotal] = useState(0);
-
-  // UCITAJ KONOBARE (IMENA)
-  useEffect(() => {
-    const unsub = onValue(usersRestoran(), (snap) => {
-      if (snap.exists()) {
-        setUsers(snap.val());
-      } else {
-        setUsers({});
-      }
+    return onValue(completeOrdersRestoran(), (snapshot) => {
+      setCompletedOrders(snapshot.val() || {});
+      setLoading(false);
+    }, (firebaseError) => {
+      setError(firebaseError.message);
+      setLoading(false);
     });
-
-    return () => unsub();
   }, []);
 
-  // UCITAJ NARUDZBE
-  useEffect(() => {
-    const unsub = onValue(completeOrdersRestoran(), (snap) => {
-      if (snap.exists()) {
-        setOrdersData(snap.val());
-      } else {
-        setOrdersData({});
-      }
-    });
-
-    return () => unsub();
-  }, []);
-
-  // RACUNANJE PO user_Id (ISPRAVNO)
-  useEffect(() => {
-    const result = {};
-    let totalSum = 0;
-
-    Object.values(ordersData || {}).forEach((orderGroup) => {
-      Object.values(orderGroup || {}).forEach((order) => {
-
-        const userId = order?.user_Id;
-        const price = Number(order?.totalPrice || 0);
-
-        if (!userId) return;
-
-        if (!result[userId]) {
-          result[userId] = 0;
-        }
-
-        result[userId] += price;
-        totalSum += price;
+  const earnings = useMemo(() => {
+    const totals = new Map();
+    Object.values(completedOrders).forEach((orders) => {
+      Object.values(orders || {}).forEach((order) => {
+        const name = String(order?.orderPersonName || "Nepoznat korisnik").trim();
+        totals.set(name, (totals.get(name) || 0) + parsePrice(order?.totalPrice));
       });
     });
+    return [...totals.entries()]
+      .map(([name, total]) => ({ name, total }))
+      .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name, "sr"));
+  }, [completedOrders]);
 
-    const finalList = Object.keys(result).map((userId) => ({
-      id: userId,
-      name:
-        users[userId]?.name ||
-        users[userId]?.ime ||
-        users[userId]?.fullName ||
-        "Nepoznat korisnik",
-      earnings: result[userId]
-    }));
-
-    // SORTIRANJE (najbolji prvi)
-    finalList.sort((a, b) => b.earnings - a.earnings);
-
-    setList(finalList);
-    setTotal(totalSum);
-
-  }, [ordersData, users]);
+  const total = earnings.reduce((sum, waiter) => sum + waiter.total, 0);
 
   return (
-    <div
-      style={{
-        padding: 16,
-        fontFamily: "sans-serif",
-        background: "#f2f2f2",
-        minHeight: "100vh"
-      }}
-    >
-      {/* HEADER */}
-      <div
-        style={{
-          background: "white",
-          padding: 16,
-          borderRadius: 12,
-          marginBottom: 10,
-          textAlign: "center",
-          fontWeight: "bold",
-          fontSize: 18
-        }}
-      >
-        Pazar konobara: {total} €
+    <main style={{ minHeight: "100vh", padding: "22px 16px 48px", background: "#f4f7f6", color: "#17231f", fontFamily: "Inter,system-ui,sans-serif" }}>
+      <div style={{ maxWidth: 820, margin: "0 auto" }}>
+        <header style={{ background: "#fff", border: "1px solid #e2eae6", borderRadius: 18, padding: 20, marginBottom: 14, boxShadow: "0 8px 24px #173d310b" }}>
+          <div style={{ color: "#547268", fontSize: 12, fontWeight: 800, letterSpacing: ".08em" }}>PREGLED ZARADE</div>
+          <h1 style={{ margin: "6px 0 4px", fontSize: 25 }}>Konobari</h1>
+          <div style={{ color: "#718078", fontSize: 14 }}>Ukupna zarada od poslednjeg reseta</div>
+          <div style={{ marginTop: 12, fontSize: 25, fontWeight: 850, color: "#176b55" }}>{formatMoney(total)}</div>
+        </header>
+        {error && <div role="alert" style={{ background: "#fff0ef", color: "#982e2a", padding: 13, borderRadius: 12, marginBottom: 12 }}>{error}</div>}
+        <section style={{ display: "grid", gap: 10 }}>
+          {loading ? <div style={{ background: "white", padding: 18, borderRadius: 14 }}>Učitavam podatke…</div> : earnings.length === 0 ? <div style={{ background: "white", padding: 18, borderRadius: 14 }}>Nema završenih narudžbi od poslednjeg reseta.</div> : earnings.map((waiter) => (
+            <article key={waiter.name} style={{ background: "white", border: "1px solid #e2eae6", borderRadius: 14, padding: "15px 17px", display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", boxShadow: "0 5px 16px #173d3109" }}>
+              <strong>{waiter.name}</strong>
+              <strong style={{ color: "#176b55", whiteSpace: "nowrap" }}>{formatMoney(waiter.total)}</strong>
+            </article>
+          ))}
+        </section>
       </div>
-
-      {/* LISTA */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {list.map((item) => (
-          <div
-            key={item.id}
-            style={{
-              background: "white",
-              padding: 14,
-              borderRadius: 12,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center"
-            }}
-          >
-            {/* IME */}
-            <div style={{ fontWeight: 600 }}>
-              {item.name}
-            </div>
-
-            {/* ZARADA */}
-            <div style={{ fontWeight: "bold" }}>
-              {item.earnings} €
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+    </main>
   );
 }

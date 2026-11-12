@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { ref, onValue, get, remove, child } from "firebase/database";
-import { db } from "../firebase/config";
-import { completeOrdersRestoran, presjekRestoran } from "../firebase/refs";
+import { onValue, child } from "firebase/database";
+import { completeOrdersRestoran } from "../firebase/refs";
 
 export default function Racuni() {
 
@@ -17,21 +16,6 @@ useEffect(() => {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   const [selectedOrder, setSelectedOrder] = useState(null);
-
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
-
-  const [presjekStatus, setPresjekStatus] = useState("Zaključano");
-
-  const [deletingSingle, setDeletingSingle] = useState(false);
-  const [deletingAll, setDeletingAll] = useState(false);
-
-  const [toast, setToast] = useState(null);
-
-  const showToast = (msg) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 4000);
-  };
 
   const parseCompletedTime = (status) => {
     if (!status) return 0;
@@ -66,8 +50,6 @@ useEffect(() => {
     }
 
     const ordersRef = child(completeOrdersRestoran(), uid);
-    const presjekRef = presjekRestoran();
-
     let timeout = setTimeout(() => {
       setLoading(false);
       setError("Nema konekcije ili server ne odgovara");
@@ -111,14 +93,9 @@ useEffect(() => {
       setTotalPazar(sum);
     });
 
-    const unsubPresjek = onValue(presjekRef, (snap) => {
-      setPresjekStatus(snap.val() || "Zaključano");
-    });
-
     return () => {
       clearTimeout(timeout);
       unsubOrders();
-      unsubPresjek();
     };
 
   }, []);
@@ -135,44 +112,6 @@ useEffect(() => {
       window.removeEventListener("offline", handleOffline);
     };
   }, []);
-
-  const deleteSingleOrder = async () => {
-    if (!selectedOrder) return;
-
-    setDeletingSingle(true);
-
-    const user = JSON.parse(localStorage.getItem("user"));
-    const uid = user?.uid;
-
-    await remove(
-      child(child(completeOrdersRestoran(), uid), selectedOrder.id)
-    );
-
-    setDeletingSingle(false);
-    setSelectedOrder(null);
-    setShowDeleteDialog(false);
-
-    showToast("Račun obrisan!");
-  };
-
-  const deleteAllOrders = async () => {
-
-    if (presjekStatus !== "Omogućeno") return;
-
-    setDeletingAll(true);
-
-    const user = JSON.parse(localStorage.getItem("user"));
-    const uid = user?.uid;
-
-    await remove(
-      child(completeOrdersRestoran(), uid)
-    );
-
-    setDeletingAll(false);
-    setShowDeleteAllDialog(false);
-
-    showToast("Svi računi su obrisani!");
-  };
 
 if (loading) {
   return (
@@ -237,22 +176,6 @@ if (loading) {
       display: "flex",
       flexDirection: "column"
     }}>
-
-     {toast && (
-  <div
-    style={{
-      position: "fixed",
-      top: "50%",
-      left: "50%",
-      transform: "translate(-50%, -50%)",
-      background: "black",
-      color: "white",
-      padding: 10,
-    }}
-  >
-    {toast}
-  </div>
-)}
 
       {isOffline && (
         <div style={{
@@ -452,151 +375,6 @@ if (loading) {
               {selectedOrder.totalPrice} €
             </div>
 
-            {presjekStatus === "Omogućeno" && (
-              <button
-                onClick={() => setShowDeleteDialog(true)}
-                disabled={deletingSingle}
-                style={{
-                  width: "100%",
-                  marginTop: 15,
-                  padding: 12,
-                  background: "red",
-                  color: "white",
-                  borderRadius: 10,
-                  opacity: deletingSingle ? 0.6 : 1
-                }}
-              >
-                {deletingSingle ? "Obrada..." : "Obriši račun"}
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {showDeleteDialog && (
-        <div style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(0,0,0,0.6)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center"
-        }}>
-          <div style={{
-            background: "white",
-            padding: 24,
-            borderRadius: 16,
-            textAlign: "center",
-            minWidth: 260
-          }}>
-            <p style={{ marginBottom: 15 }}>Obrisati ovaj račun?</p>
-
-            <div style={{
-              display: "flex",
-              justifyContent: "space-between",
-              gap: 10
-            }}>
-              <button
-                onClick={deleteSingleOrder}
-                style={{
-                  flex: 1,
-                  padding: 10,
-                  background: "#d32f2f",
-                  color: "white",
-                  borderRadius: 8
-                }}
-              >
-                {deletingSingle ? "Obrada..." : "DA"}
-              </button>
-
-              <button
-                onClick={() => setShowDeleteDialog(false)}
-                style={{
-                  flex: 1,
-                  padding: 10,
-                  background: "#ccc",
-                  borderRadius: 8
-                }}
-              >
-                NE
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {presjekStatus === "Omogućeno" && !selectedOrder && (
-        <div style={{
-          position: "fixed",
-          bottom: 12,
-          left: 0,
-          right: 0,
-          display: "flex",
-          justifyContent: "center"
-        }}>
-          <button
-            onClick={() => setShowDeleteAllDialog(true)}
-            style={{
-              padding: "12px 18px",
-              background: "red",
-              color: "white",
-              borderRadius: 10,
-              width: "auto"
-            }}
-          >
-            Obriši sve račune
-          </button>
-        </div>
-      )}
-
-      {showDeleteAllDialog && (
-        <div style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(0,0,0,0.6)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center"
-        }}>
-          <div style={{
-            background: "white",
-            padding: 24,
-            borderRadius: 16,
-            textAlign: "center",
-            minWidth: 260
-          }}>
-            <p style={{ marginBottom: 15 }}>Obrisati sve račune?</p>
-
-            <div style={{
-              display: "flex",
-              justifyContent: "space-between",
-              gap: 10
-            }}>
-              <button
-                onClick={deleteAllOrders}
-                style={{
-                  flex: 1,
-                  padding: 10,
-                  background: "#d32f2f",
-                  color: "white",
-                  borderRadius: 8
-                }}
-              >
-                {deletingAll ? "Obrada..." : "DA"}
-              </button>
-
-              <button
-                onClick={() => setShowDeleteAllDialog(false)}
-                style={{
-                  flex: 1,
-                  padding: 10,
-                  background: "#ccc",
-                  borderRadius: 8
-                }}
-              >
-                NE
-              </button>
-            </div>
           </div>
         </div>
       )}

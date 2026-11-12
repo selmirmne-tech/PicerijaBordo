@@ -19,13 +19,51 @@ export const menuByDate = (date) =>
 export const menuDataByDate = (date) =>
   child(menuByDate(date), N.MENU_PODACI);
 
+export const menuData = () =>
+  child(menuRestoran(), N.MENU_PODACI);
+
+export const menuCreateAt = () =>
+  child(menuRestoran(), N.MENU_CREATE_AT);
+
+export const menuCreateAtMillis = () =>
+  child(menuRestoran(), N.MENU_CREATE_AT_MILLIS);
+
 // INFO
 export const infoConnected = () =>
   ref(db, N.INFO_CONNECTED);
 
+export const expire = () =>
+  child(rootRestoran(), N.EXPIRE);
+
+export const notificationRef = () =>
+  child(rootRestoran(), N.NOTIFIKACIJA);
+
 // USERS
 export const usersRestoran = () =>
   child(rootRestoran(), N.USERS_RESTORAN);
+
+// Articles and beverage accounting (same Firebase nodes as Android ArtikliActivity)
+export const artikliRestoran = () =>
+  child(rootRestoran(), N.ARTIKLI);
+
+export const formaRestoran = () =>
+  child(rootRestoran(), N.FORMA);
+
+// Statistics (same paths as the Android FirebaseRefs)
+export const statisticsRestoran = () =>
+  child(rootRestoran(), N.STATISTICS);
+
+export const konobariRestoran = () =>
+  child(statisticsRestoran(), N.KONOBARI);
+
+export const waiterStatistics = (userId) =>
+  child(konobariRestoran(), userId);
+
+export const waiterStatisticPath = (userId, dateKey, field) =>
+  `${N.ROOT_RESTORAN}/${N.STATISTICS}/${N.KONOBARI}/${userId}/${dateKey}/${field}`;
+
+export const waiterMonthStatistics = (userId, year, month) =>
+  child(child(waiterStatistics(userId), year), month);
 
 // ORDERS
 export const ordersRestoran = () =>
@@ -40,6 +78,17 @@ export const completeOrdersRestoran = () =>
 
 export const completeOrderRef = (userId, orderId) =>
   child(child(completeOrdersRestoran(), userId), orderId);
+
+// Deleted orders (archived without affecting totals or notifications)
+export const deletedOrdersRestoran = () =>
+  child(rootRestoran(), N.DELETED_ORDERS_NODE);
+
+export const deletedOrderRef = (userId, orderId) =>
+  child(child(deletedOrdersRestoran(), userId), orderId);
+
+// Relative path for an atomic multi-location update rooted at rootRestoran().
+export const deletedOrderPath = (userId, orderId) =>
+  `${N.DELETED_ORDERS_NODE}/${userId}/${orderId}`;
 
 // TOTAL PRICE
 export const totalPriceRestoran = () =>
@@ -58,11 +107,14 @@ export const totalDrugaRef = () =>
 export const globalLockRef = () =>
   child(totalPriceRestoran(), N.GLOBAL_LOCK);
 export const globalLockPath = () =>
-  `${N.ROOT_RESTORAN}/${N.GLOBAL_LOCK}`;
+  `${N.ROOT_RESTORAN}/${N.TOTAL_PRICE_RESTORAN}/${N.GLOBAL_LOCK}`;
 
 // TRANSACTION LOCKS
 export const transactionLocksRestoran = () =>
   child(rootRestoran(), N.TRANSACTION_LOCKS_RESTORAN);
+
+export const transactionLocks = () =>
+  child(rootRestoran(), N.TRANSACTION_LOCKS);
 
 export const transactionLockRef = (orderId) =>
   child(transactionLocksRestoran(), orderId);
@@ -71,12 +123,9 @@ export const transactionLockRef = (orderId) =>
 export const totalResetRef = () =>
   child(totalPriceRestoran(), N.RESET);
 
-// MJESECI / PRESJEK
+// MJESECI
 export const mjeseciRestoran = () =>
-  child(rootRestoran(), N.MJESECI_RESTORAN);
-
-export const presjekRestoran = () =>
-  child(rootRestoran(), N.PRESJEK_RESTORAN);
+  child(statisticsRestoran(), N.MJESECI_RESTORAN);
 
 // APP UPDATE
 export const appUpdateRestoran = () =>

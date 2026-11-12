@@ -1,7 +1,7 @@
 
 
 import { useEffect, useState } from "react";
-import { onValue, set, child } from "firebase/database";
+import { onValue, child } from "firebase/database";
 import { update, get } from "firebase/database";
 
 import * as N from "../firebase/nodes";
@@ -10,14 +10,20 @@ import {
   rootRestoran,
   totalPriceRestoran,
   completeOrdersRestoran,
-  presjekRestoran,
-  totalResetRef
+  totalResetRef,
+  statisticsRestoran
 } from "../firebase/refs";
 
 
 import { useNavigate } from "react-router-dom";
 
 export default function Stats() {
+
+const statsUser = (() => {
+  try { return JSON.parse(localStorage.getItem("user") || "null"); }
+  catch { return null; }
+})();
+const isAdmin = statsUser?.titula === "Administrator";
 
 
 useEffect(() => {
@@ -32,7 +38,6 @@ const [resetSuccess, setResetSuccess] = useState(false);
   const [ordersCount, setOrdersCount] = useState(0);
   const [activeOrdersCount, setActiveOrdersCount] = useState(0);
   const [resetPressed, setResetPressed] = useState(false);
-  const [lockState, setLockState] = useState("Zaključano");
   const [resetInfo, setResetInfo] = useState(null);
   const [expire, setExpire] = useState(null);
   const [time, setTime] = useState(new Date());
@@ -93,7 +98,6 @@ const [resetSuccess, setResetSuccess] = useState(false);
 		   
 
           let totalOrders = 0;
-
           // svaki korisnik
           Object.keys(users).forEach((userId) => {
 
@@ -147,18 +151,6 @@ const unsubActiveOrders = onValue(
  
 	
 
-    // LOCK STATE
-    const unsubLock = onValue(
-      presjekRestoran(),
-      (snap) => {
-
-        if (snap.exists()) {
-          setLockState(snap.val());
-        }
-
-      }
-    );
-
     // RESET INFO
     const unsubReset = onValue(
       totalResetRef(),
@@ -197,7 +189,6 @@ const unsubActiveOrders = onValue(
 
       unsubTotal();
       unsubOrders();
-      unsubLock();
       unsubReset();
       unsubExpire();
 	  unsubActiveOrders();
@@ -206,94 +197,17 @@ const unsubActiveOrders = onValue(
 
   }, []);
 
-  // TOGGLE LOCK
-  const toggleLock = async () => {
-
-    const newState =
-      lockState === "Zaključano"
-        ? "Omogućeno"
-        : "Zaključano";
-
-    await set(
-      presjekRestoran(),
-      newState
-    );
-
-  };
-  
-  
  
   
   
   
-  	const performReset = async ({ deleteMonths, deleteOrders }) => {
-
+	const performReset = async ({ deleteMonths, deleteOrders }) => {
     try {
-
-        const rootRef = rootRestoran();
-
-
-        // ==============================
-        // UZMI TRENUTNI TOTAL
-        // ==============================
-
-        const totalSnap = await get(
-            child(
-                totalPriceRestoran(),
-                N.TOTAL_RESTORAN
-            )
-        );
-
-
-        let totalValue = 0;
-
-        if (totalSnap.exists()) {
-
-            totalValue = Number(
-                totalSnap.val()
-            ) || 0;
-
-        }
-
-
-        // ==============================
-        // MJESEC
-        // ==============================
-
-        const nowDate = new Date();
-
-        const year = nowDate.getFullYear();
-
-        const month = String(
-            nowDate.getMonth() + 1
-        ).padStart(2, "0");
-
-
-        const monthName = `${year}-${month}`;
-
-
-        const monthRef = child(
-    child(rootRestoran(), N.MJESECI_RESTORAN),
-    monthName
-);
-
-
-        const monthSnap = await get(monthRef);
-
-
-        let monthly = 0;
-
-
-        if (monthSnap.exists()) {
-
-            monthly =
-                Number(monthSnap.val()) || 0;
-
-        }
-
-
-        const newMonthly =
-            monthly + totalValue;
+      const rootRef = rootRestoran();
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const monthName = `${year}-${month}`;
 
 
 
@@ -324,16 +238,14 @@ const unsubActiveOrders = onValue(
         ] = "False";
 
 
-        updates[
-            N.PRESJEK_RESTORAN
-        ] = "Zaključano";
-
-
-
         // uvijek briši završene račune
 
         updates[
             N.COMPLETE_ORDERS_RESTORAN
+        ] = null;
+
+        updates[
+            N.DELETED_ORDERS_NODE
         ] = null;
 
 
@@ -358,8 +270,6 @@ const unsubActiveOrders = onValue(
 
 
 
-    const now = new Date();
-
 const resetTime =
     String(now.getDate()).padStart(2, "0") + " " +
     String(now.getMonth() + 1).padStart(2, "0") + " " +
@@ -375,23 +285,25 @@ const resetTime =
 
 
 
-        if (deleteMonths) {
+      // Android deletes every statistics branch except the current month's
+      // summary when the user explicitly confirms the full statistics reset.
+      if (deleteMonths) {
+        const statsSnapshot = await get(statisticsRestoran());
+        if (statsSnapshot.exists()) {
+          statsSnapshot.forEach((childSnapshot) => {
+            const key = childSnapshot.key;
+            if (!key || key === N.MJESECI_RESTORAN) return;
+            updates[`${N.STATISTICS}/${key}`] = null;
+          });
 
-
-            updates[
-                N.MJESECI_RESTORAN
-            ] = null;
-
-
-        } else {
-
-
-            updates[
-                `${N.MJESECI_RESTORAN}/${monthName}`
-            ] = String(newMonthly);
-
-
+          statsSnapshot.child(N.MJESECI_RESTORAN).forEach((monthSnapshot) => {
+            if (monthSnapshot.key !== monthName) {
+              updates[`${N.STATISTICS}/${N.MJESECI_RESTORAN}/${monthSnapshot.key}`] = null;
+            }
+          });
         }
+        updates[`${N.STATISTICS}/${N.MJESECI_RESTORAN}/${monthName}`] = "0";
+      }
 
 
 
@@ -817,56 +729,6 @@ Poslednji reset: {resetInfo || "N/A"}
 	  
 	  
 
-      {/* LOCK */}
-      <div
-        style={{
-          background: "white",
-          padding: 16,
-          borderRadius: 14,
-          marginTop: 10,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center"
-        }}
-      >
-
-        <div>
-
-          <div style={{ fontWeight: 600 }}>
-            Omogući brisanje računa
-          </div>
-
-          <div
-            style={{
-              fontSize: 13,
-              color: "#666"
-            }}
-          >
-          
-          </div>
-
-        </div>
-
-      <button
-  onClick={() => {
-    vibrate(100);
-    toggleLock();
-  }}
-  style={{
-    padding: "8px 14px",
-    borderRadius: 10,
-    border: "none",
-    cursor: "pointer",
-    color: "white",
-    fontWeight: "bold",
-    background: lockState === "Zaključano" ? "red" : "green"
-  }}
->
-  {lockState}
-</button>
-
-      </div>
-
   {/* EXTRA ACTIONS */}
 
 <div
@@ -886,14 +748,17 @@ style={{
  borderRadius:12,
  display:"flex",
  justifyContent:"space-between",
- alignItems:"center"
+ alignItems:"center",
+ gap:10,
+ flexWrap:"wrap"
 }}
 >
 
 <div
 style={{
  fontSize:15,
- fontWeight:600
+ fontWeight:600,
+ flex:"1 1 220px"
 }}
 >
 Mjesečni izvještaj
@@ -915,7 +780,7 @@ style={{
  fontSize:14
 }}
 >
-Otvori
+Pregled
 </button>
 
 </div>
@@ -929,19 +794,21 @@ style={{
  borderRadius:12,
  display:"flex",
  justifyContent:"space-between",
- alignItems:"center"
+ alignItems:"center",
+ gap:10,
+ flexWrap:"wrap"
 }}
 >
 
 <div
 style={{
  fontSize:15,
- fontWeight:600
+ fontWeight:600,
+ flex:"1 1 220px"
 }}
 >
-Konobari
+Konobari: Ukupna zarada od poslednjeg reseta
 </div>
-
 
 <button
 onClick={() => {
@@ -958,7 +825,7 @@ style={{
  fontSize:14
 }}
 >
-Otvori
+Pregled
 </button>
 
 
@@ -977,7 +844,7 @@ Otvori
         }}
       >
 
- <button
+ {isAdmin && (<button
   onClick={() => {
 
     vibrate(80);
@@ -1017,7 +884,7 @@ Otvori
   }}
 >
   RESET
-</button>
+</button>)}
 
       </div>
 
@@ -1169,7 +1036,7 @@ to {
  
 
 <ResetDialog
-        open={showResetDialog}
+        open={isAdmin && showResetDialog}
         onClose={() => setShowResetDialog(false)}
         onConfirm={handleResetConfirm}
       />

@@ -1,11 +1,28 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { get, push, set, remove} from "firebase/database";
+import { onValue, push, set, remove} from "firebase/database";
 import { menuRestoran, ordersRestoran } from "../firebase/refs";
 import CartModal from "../components/CartModal";
 
 const MENU_CACHE_KEY = "restoran_menu";
 const MENU_DATE_KEY = "restoran_menu_date";
+
+const menuVersion = (value) => {
+  const match = String(value || "").match(/^(\d{1,2})[-./](\d{1,2})[-./](\d{4})/);
+  return match ? new Date(Number(match[3]), Number(match[2]) - 1, Number(match[1])).getTime() : 0;
+};
+
+const readCurrentMenu = (data) => {
+  if (data?.Podaci && typeof data.Podaci === "object") {
+    return { items: data.Podaci, version: String(data.createAtMillis || data.createAt || "flat-menu"), createAt: String(data.createAt || "") };
+  }
+  const dated = Object.entries(data || {})
+    .filter(([key, value]) => key !== "createAt" && key !== "createAtMillis" && value?.Podaci)
+    .sort(([a], [b]) => menuVersion(b) - menuVersion(a));
+  if (!dated.length) return { items: {}, version: "empty", createAt: "" };
+  return { items: dated[0][1].Podaci, version: dated[0][0], createAt: dated[0][0] };
+};
+
 export default function Naruci() {
 const navigate = useNavigate();
   const [menu, setMenu] = useState([]);
@@ -32,7 +49,7 @@ const [ordered, setOrdered] = useState(false);
 
 
 const categoryRef = useRef(null);
-const menuChecked = useRef(false);
+
  
 
 const saveMenuCache=(menu,date)=>{
@@ -92,179 +109,48 @@ useEffect(() => {
  
  
  
-useEffect(()=>{
-
-
-const load=async()=>{
-
-if(menuChecked.current) return;
-
-menuChecked.current = true;
-
-// ======================
-// 1. UCITAJ CACHE
-// ======================
-
-
-const cached = getMenuCache();
-
-
-if(cached){
-
-  setMenu(cached);
-  setLoading(false);
-
-}
-
-
-
-// ======================
-// 2. PROVJERA FIREBASE
-// ======================
-
-
-const start = performance.now();
-
-
-const snap =
-await get(menuRestoran());
-
-
-console.log(
-"Firebase:",
-performance.now()-start,
-"ms"
-);
-
-
-
-if(!snap.exists()){
-
-  if(!cached)
-    setMenu([]);
-
-  setLoading(false);
-
-  return;
-
-}
-
-
-
-const data=snap.val();
-
-
-
-const dates=Object.keys(data);
-
-
-
-dates.sort((a,b)=>{
-
-
-const [d1,m1,y1]=a.split("-");
-const [d2,m2,y2]=b.split("-");
-
-
-return new Date(`${y2}-${m2}-${d2}`)
--
-new Date(`${y1}-${m1}-${d1}`);
-
-
-});
-
-
-
-const lastDate=dates[dates.length-1];
-
-
-
-const savedDate =
-localStorage.getItem(
-MENU_DATE_KEY
-);
-
-
-
-// ======================
-// 3. AKO JE ISTI DATUM
-// NE SKIDAJ
-// ======================
-
-
-if(
-savedDate === lastDate
-&& cached
-){
-
- console.log(
- "Meni isti - koristim cache"
- );
-
- setLoading(false);
-
- return;
-
-}
-
-
-
-// ======================
-// 4. NOVI MENI
-// ======================
-
-
-
-const podaci =
-data[lastDate]?.Podaci || {};
-
-
-
-const list =
-Object.keys(podaci)
-.map(id=>({
-
- id,
- ...podaci[id]
-
-}));
-
-
-
-setMenu(list);
-
-
-saveMenuCache(
- list,
- lastDate
-);
-
-
-
-console.log(
-"Novi meni skinut:",
-lastDate
-);
-
-
-
-alert(
-  `Novi meni je preuzet\nDatum: ${lastDate}`
-);
-
-
-
-setLoading(false);
-
-
-};
-
-
-
-load();
-
-
-},[]);
+useEffect(() => {
+  const cached = getMenuCache();
+  const cachedVersion = localStorage.getItem(MENU_DATE_KEY);
+  const lastVersion = { current: cachedVersion };
+  if (cached) {
+    setMenu(cached);
+    setLoading(false);
+  }
+
+  const unsubscribe = onValue(menuRestoran(), (snap) => {
+    if (!snap.exists()) {
+      setMenu([]);
+      setCart({});
+      setSelectedItems([]);
+      saveMenuCache([], "empty");
+      lastVersion.current = "empty";
+      setLoading(false);
+      return;
+    }
+
+    const { items, version, createAt } = readCurrentMenu(snap.val());
+    const list = Object.entries(items).map(([id, item]) => ({ id, ...item }));
+    setMenu(list);
+    const currentItems = new Map(list.map((item) => [item.id, item]));
+    setSelectedItems((current) => current.filter((id) => currentItems.has(id)));
+    setCart((current) => Object.fromEntries(Object.entries(current)
+      .filter(([id]) => currentItems.has(id))
+      .map(([id, cartItem]) => [id, { ...currentItems.get(id), qty: cartItem.qty }])));
+    saveMenuCache(list, version);
+    if (lastVersion.current && lastVersion.current !== version) {
+      alert(`Novi meni je preuzet!${createAt ? `\n${createAt}` : ""}`);
+    }
+    lastVersion.current = version;
+    setLoading(false);
+  }, (error) => {
+    console.error("MENU LOAD ERROR:", error);
+    if (!cached) setMenu([]);
+    setLoading(false);
+  });
+
+  return unsubscribe;
+}, []);
 
 
 
@@ -361,22 +247,18 @@ const closeCart = () => {
 };
  
 const toggleSelect=(item)=>{
-
-  setSelectedItems(prev=>{
-
-    if(prev.includes(item.id)){
-
-      return prev.filter(id=>id !== item.id);
-
-    }
-
-    return [
-      ...prev,
-      item.id
-    ];
-
-  });
-
+  if (selectedItems.includes(item.id)) {
+    setCart((current) => {
+      const next = { ...current };
+      delete next[item.id];
+      return next;
+    });
+    setSelectedItems((current) => current.filter((id) => id !== item.id));
+    return;
+  }
+  setSelectedItems((current) => current.includes(item.id)
+    ? current
+    : [...current, item.id]);
 };
 
 
@@ -396,22 +278,21 @@ const selectedCount = selectedItems.length;
 
 
 const openCart = () => {
-  const initial = {};
+  setCart((current) => {
+    const next = {};
+    menu
+      .filter((item) => selectedItems.includes(item.id))
+      .forEach((item) => {
+        next[item.id] = {
+          ...current[item.id],
+          ...item,
+          qty: current[item.id]?.qty || 1,
+        };
+      });
+    return next;
+  });
 
-  menu
-    .filter(item => selectedItems.includes(item.id))
-    .forEach(item => {
-      initial[item.id] = {
-        ...item,
-        qty: 1
-      };
-    });
-
-  setCart(initial);
-
- window.history.pushState({ cart: true }, "");
-setShowCart(true);
-
+  window.history.pushState({ cart: true }, "");
   setShowCart(true);
 };
 
@@ -560,6 +441,28 @@ const confirmOrder = async () => {
         return;
     }
 
+    const items = Object.values(cart);
+    const invalidItem = items.some((item) => {
+        const quantity = Number(item.qty);
+        const price = Number(item.price);
+        return !Number.isInteger(quantity) || quantity < 1 ||
+            !Number.isFinite(price) || price < 0;
+    });
+
+    if (invalidItem) {
+        alert("Neispravna količina ili cijena artikla.");
+        return;
+    }
+
+    const sum = Math.round(items.reduce(
+        (total, item) => total + Number(item.price) * Number(item.qty),
+        0
+    ) * 100) / 100;
+
+    if (!Number.isFinite(sum)) {
+        alert("Neispravna ukupna cijena.");
+        return;
+    }
     setSending(true);
     setSeconds(20);
 
@@ -613,12 +516,10 @@ const confirmOrder = async () => {
 
     try {
 
-        const items = Object.values(cart);
-
         const text =
             items
                 .map(i => `${i.qty > 1 ? i.qty + "X " : ""}${i.name}`)
-                .join("\n") + " ";
+                .join("\n");
 
         const desc =
             items
@@ -626,15 +527,10 @@ const confirmOrder = async () => {
                 .join("\n");
 
         const now = new Date();
-
+        const pad = (value) => String(value).padStart(2, "0");
         const time =
-            now.toLocaleTimeString("en-GB") +
-            " " +
-            String(now.getDate()).padStart(2, "0") +
-            "-" +
-            String(now.getMonth() + 1).padStart(2, "0") +
-            "-" +
-            now.getFullYear();
+            `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())} ` +
+            `${pad(now.getDate())}-${pad(now.getMonth() + 1)}-${now.getFullYear()}`;
 
         await set(ref, {
 
@@ -648,7 +544,7 @@ const confirmOrder = async () => {
 
             status: "pending",
 
-            totalPrice: totalPrice.toFixed(2),
+            totalPrice: sum.toFixed(2),
 
             priprema: "0",
 
@@ -656,7 +552,7 @@ const confirmOrder = async () => {
 
             description: desc,
 
-            addittionalInfo: note
+            addittionalInfo: note.trim()
 
         });
 

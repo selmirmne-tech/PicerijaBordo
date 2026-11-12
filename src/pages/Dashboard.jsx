@@ -5,26 +5,66 @@ import { child } from "firebase/database";
 import { usersRestoran } from "../firebase/refs";
 import { onValue } from "firebase/database";
 import { rootRestoran } from "../firebase/refs";
+import { auth } from "../firebase/config";
+import { get } from "firebase/database";
 export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState("");
   const navigate = useNavigate();
+  const showToast = (message) => {
+    setToast(message);
+    window.setTimeout(() => setToast(""), 3000);
+  };
+  const openStats = () => user?.titula === "Administrator" ? navigate("/stats") : showToast("Nemate pravo pristupa!");
+  const openAdmin = () => user?.titula === "Administrator" ? navigate("/admin") : showToast("Nemate pravo pristupa!");
+  const openAccounting = () => ["Administrator", "Konobar"].includes(user?.titula) ? navigate("/obracun") : showToast("Nemate pravo pristupa!");
 const [licenseExpired, setLicenseExpired] = useState(false);
-  // LOAD USER ON START
+
+// LOAD USER ON START
 useEffect(() => {
-  try {
-    const data = localStorage.getItem("user");
+  const loadUser = async () => {
+    try {
+      const data = localStorage.getItem("user");
 
-    if (data && data !== "undefined" && data !== "null") {
-      setUser(JSON.parse(data));
-    } else {
+      if (!data || data === "undefined" || data === "null") {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
+      const localUser = JSON.parse(data);
+      const uid = auth.currentUser?.uid || localUser.uid;
+
+      if (!uid) {
+        setUser(localUser);
+        setLoading(false);
+        return;
+      }
+
+      const snapshot = await get(child(usersRestoran(), uid));
+
+      if (snapshot.exists()) {
+        const fullUser = {
+          ...snapshot.val(),
+          uid,
+        };
+
+        localStorage.setItem("user", JSON.stringify(fullUser));
+        setUser(fullUser);
+      } else {
+        setUser(localUser);
+      }
+
+    } catch (error) {
+      console.error("DASHBOARD USER ERROR:", error);
       setUser(null);
+    } finally {
+      setLoading(false);
     }
-  } catch (e) {
-    setUser(null);
-  }
+  };
 
-  setLoading(false);
+  loadUser();
 }, []);
 
 
@@ -259,9 +299,11 @@ Kontaktirajte administratora
 
         <Card icon="📄✏️" title="Naruči hranu" onClick={() => navigate("/order")} />
         <Card icon="👨‍🍳" title="Kuhinja" onClick={() => navigate("/kitchen")} />
-        <Card icon="📊" title="Statistika" onClick={() => navigate("/stats")} />
+        <Card icon="📊" title="Statistika" onClick={openStats} />
         <Card icon="📄" title="Računi" onClick={() => navigate("/Racuni")} />
-        <Card icon="ℹ️" title="Informacije" onClick={() => navigate("/info")} />
+        <Card icon="🍽️" title="Upravljanje menijem" onClick={openAdmin} />
+        <Card icon="🧾" title="Obračun artikala" onClick={openAccounting} />
+        <Card icon="ℹ️" title="Informacije" onClick={() => navigate("/about")} />
 
        <Card
   icon="🚪"
@@ -295,6 +337,7 @@ Kontaktirajte administratora
 
       </div>
     </div>
+      {toast && <div role="status" style={{ position: "fixed", zIndex: 100, left: "50%", bottom: 28, transform: "translateX(-50%)", background: "#222", color: "#fff", padding: "12px 18px", borderRadius: 24, boxShadow: "0 6px 22px #0004", whiteSpace: "nowrap" }}>{toast}</div>}
 	</>
   );
 }

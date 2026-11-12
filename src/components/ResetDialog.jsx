@@ -13,36 +13,10 @@ export default function ResetDialog({
     const [deleteOrders, setDeleteOrders] = useState(false);
     const [loading, setLoading] = useState(false);
 
-const [showPasswordDialog, setShowPasswordDialog] = useState(false);
-const [password, setPassword] = useState("");
-const [passwordError, setPasswordError] = useState(false);
+const [showStatsConfirmation, setShowStatsConfirmation] = useState(false);
 
 
     if (!open) return null;
-
-
-
-
-
-
-
-
-const checkPassword = () => {
-
-    if (password === "123") {
-
-        setDeleteMonths(true);
-        setShowPasswordDialog(false);
-        setPassword("");
-        setPasswordError(false);
-
-    } else {
-
-        setPasswordError(true);
-
-    }
-
-};
 
 
 
@@ -83,7 +57,7 @@ const checkPassword = () => {
 	
  
 	
-	if (showPasswordDialog) {
+	if (showStatsConfirmation) {
 
     return (
 
@@ -99,45 +73,8 @@ const checkPassword = () => {
                 <div className="resetBody">
 
                     <p>
-                        Unesite šifru za brisanje mjesečnih izvještaja
+                        Ako označite, mjesečni izvještaji i statistika će biti obrisani trajno.
                     </p>
-
-
-                    <input
-
-                        type="password"
-
-                        value={password}
-
-                        onChange={(e) => {
-
-                            setPassword(e.target.value);
-                            setPasswordError(false);
-
-                        }}
-
-                        style={{
-                            width:"100%",
-                            padding:"10px",
-                            borderRadius:"8px",
-                            border:"1px solid #ccc",
-                            fontSize:"18px"
-                        }}
-
-                    />
-
-
-                    {
-                        passwordError &&
-
-                        <p style={{
-                            color:"red",
-                            fontWeight:"bold"
-                        }}>
-                            Pogrešna šifra!
-                        </p>
-
-                    }
 
 
                 </div>
@@ -150,7 +87,10 @@ const checkPassword = () => {
 
                         className="btnYes"
 
-                        onClick={checkPassword}
+                        onClick={() => {
+                            setDeleteMonths(true);
+                            setShowStatsConfirmation(false);
+                        }}
 
                     >
                         POTVRDI
@@ -163,9 +103,8 @@ const checkPassword = () => {
 
                         onClick={() => {
 
-                            setShowPasswordDialog(false);
-                            setPassword("");
-                            setPasswordError(false);
+                            setDeleteMonths(false);
+                            setShowStatsConfirmation(false);
 
                         }}
 
@@ -202,17 +141,9 @@ const checkPassword = () => {
 
     <div style={{ textAlign: "center" }}>
 
-        <p>
-            Ovom akcijom brišete sve podatke!
-        </p>
+        <p>Ovom akcijom brišete podatke trajno!</p>
 
-        <p>
-            Sve narudžbe i računi će biti obrisani!
-        </p>
-
-        <p>
-            Ukupna zarada će biti postavljena na 0.
-        </p>
+        <p>Svi računi i dnevna zarada će biti obrisani.</p>
 
     </div>
 
@@ -220,7 +151,7 @@ const checkPassword = () => {
 
                         <span>
 
-                            Mjesečni izvještaj
+                            Mjesečni izvještaji i statistika konobara
 
                         </span>
 
@@ -236,7 +167,7 @@ const checkPassword = () => {
 
         if (e.target.checked) {
 
-            setShowPasswordDialog(true);
+            setShowStatsConfirmation(true);
 
         } else {
 

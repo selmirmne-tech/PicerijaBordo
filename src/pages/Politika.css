@@ -1,0 +1,190 @@
+.privacy-page {
+  min-height: 100vh;
+
+  padding: 16px;
+
+  background: #f3f3f3;
+
+  color: #333;
+
+  box-sizing: border-box;
+}
+
+
+/* NASLOV */
+
+.privacy-title {
+  width: 100%;
+
+  max-width: 1000px;
+
+  margin: 0 auto;
+
+  padding: 10px;
+
+  box-sizing: border-box;
+
+  text-align: center;
+
+  font-size: 24px;
+
+  font-weight: 700;
+
+  color: #853939;
+}
+
+
+/* GLAVNA KARTICA */
+
+.privacy-card {
+  width: 100%;
+
+  max-width: 1000px;
+
+  height: calc(100vh - 100px);
+
+  margin: 12px auto 0;
+
+  background: #ffffff;
+
+  border-radius: 20px;
+
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+
+  overflow: hidden;
+
+  box-sizing: border-box;
+}
+
+
+/* SKROL SADRŽAJ */
+
+.privacy-content {
+  height: 100%;
+
+  overflow-y: auto;
+
+  padding: 20px;
+
+  box-sizing: border-box;
+
+  font-size: 15px;
+
+  line-height: 1.7;
+}
+
+
+/* NASLOVI */
+
+.privacy-content h2 {
+  margin-top: 0;
+
+  margin-bottom: 18px;
+
+  color: #853939;
+
+  font-size: 21px;
+}
+
+
+.privacy-content h3 {
+  margin-top: 28px;
+
+  margin-bottom: 8px;
+
+  color: #853939;
+
+  font-size: 17px;
+}
+
+
+/* PARAGRAFI */
+
+.privacy-content p {
+  margin: 0 0 14px;
+}
+
+
+/* DATUM */
+
+.privacy-content strong {
+  font-weight: 700;
+}
+
+
+/* COPYRIGHT */
+
+.privacy-footer {
+  margin-top: 35px !important;
+
+  padding-top: 20px;
+
+  border-top: 1px solid #ddd;
+
+  text-align: center;
+
+  font-size: 12px;
+
+  font-weight: 700;
+
+  color: #555;
+}
+
+
+/* SCROLLBAR */
+
+.privacy-content::-webkit-scrollbar {
+  width: 7px;
+}
+
+
+.privacy-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+
+.privacy-content::-webkit-scrollbar-thumb {
+  background: #c8c8c8;
+
+  border-radius: 10px;
+}
+
+
+/* MOBILNI */
+
+@media (max-width: 600px) {
+
+  .privacy-page {
+    padding: 12px;
+  }
+
+  .privacy-title {
+    font-size: 22px;
+
+    padding: 8px;
+  }
+
+  .privacy-card {
+    height: calc(100vh - 85px);
+
+    margin-top: 8px;
+
+    border-radius: 18px;
+  }
+
+  .privacy-content {
+    padding: 18px;
+
+    font-size: 15px;
+
+    line-height: 1.65;
+  }
+
+  .privacy-content h2 {
+    font-size: 20px;
+  }
+
+  .privacy-content h3 {
+    font-size: 16px;
+  }
+}
