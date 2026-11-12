@@ -22,15 +22,15 @@ import { APP_VERSION } from "./config/appVersion";
 
 const getUser = () => {
   try {
+    const loginMigrationKey = "manual_login_required_v1";
+    if (localStorage.getItem(loginMigrationKey) !== "done") {
+      localStorage.removeItem("user");
+      localStorage.setItem(loginMigrationKey, "done");
+    }
+
     const data = localStorage.getItem("user");
     if (!data || data === "undefined" || data === "null") return null;
-    const user = JSON.parse(data);
-    // Clear the account previously inserted by the removed automatic test login.
-    if (String(user?.email || "").trim().toLowerCase() === "test@vasrestoran.com") {
-      localStorage.removeItem("user");
-      return null;
-    }
-    return user;
+    return JSON.parse(data);
   } catch {
     return null;
   }

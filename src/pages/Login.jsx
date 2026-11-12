@@ -82,11 +82,17 @@ const saveFCMToken = async (uid) => {
  
  const login = async () => {
   try {
+    const normalizedEmail = email.trim();
+    if (!normalizedEmail) {
+      alert("Unesite email");
+      return;
+    }
+
     await setPersistence(auth, browserLocalPersistence);
 
     const userCred = await signInWithEmailAndPassword(
       auth,
-      email,
+      normalizedEmail,
       password
     );
 
@@ -134,7 +140,8 @@ const saveFCMToken = async (uid) => {
   // =====================================================
   const register = async () => {
     try {
-      if (!ime || !email || !password || !broj) {
+      const normalizedEmail = email.trim();
+      if (!ime || !normalizedEmail || !password || !broj) {
         alert("Popuni sva polja");
         return;
       }
@@ -146,7 +153,7 @@ const saveFCMToken = async (uid) => {
 
       const userCred = await createUserWithEmailAndPassword(
         auth,
-        email,
+        normalizedEmail,
         password
       );
 
@@ -154,7 +161,7 @@ const saveFCMToken = async (uid) => {
 
       const newUser = {
         ime,
-        email,
+        email: normalizedEmail,
         broj,
         password,
         titula,
@@ -208,6 +215,8 @@ const saveFCMToken = async (uid) => {
         {mode === "login" && (
           <div className="space-y-4">
             <input
+              type="email"
+              autoComplete="username"
               className="w-full p-4 rounded-2xl bg-neutral-800 text-white outline-none focus:ring-2 focus:ring-orange-500"
               placeholder="Email"
               onChange={(e) => setEmail(e.target.value)}
@@ -233,6 +242,8 @@ const saveFCMToken = async (uid) => {
         {mode === "register" && (
           <div className="space-y-4">
             <input
+              type="email"
+              autoComplete="email"
               className="w-full p-4 rounded-2xl bg-neutral-800 text-white outline-none focus:ring-2 focus:ring-green-500"
               placeholder="Ime i prezime"
               onChange={(e) => setIme(e.target.value)}
