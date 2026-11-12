@@ -84,23 +84,30 @@ export default function App() {
   const [versionBlockReason, setVersionBlockReason] = useState("");
   const [internetAvailable, setInternetAvailable] = useState(() => navigator.onLine);
   const [databaseConnected, setDatabaseConnected] = useState(false);
+  const [connectionStartupTimedOut, setConnectionStartupTimedOut] = useState(false);
   const [connectionMessageVisible, setConnectionMessageVisible] = useState(false);
+  const hasConnectedToDatabase = useRef(false);
   const [firebaseAuthUser, setFirebaseAuthUser] = useState(null);
   const [firebaseAuthReady, setFirebaseAuthReady] = useState(false);
   const firebaseAuthUid = firebaseAuthUser?.uid ?? null;
   const verifiedUser = firebaseAuthReady && firebaseAuthUid ? user : null;
   const activeUser = firebaseAuthReady ? verifiedUser : user;
-  const connectionUnavailable = !internetAvailable || !databaseConnected;
+  const connectionUnavailable = !internetAvailable || (!databaseConnected && (hasConnectedToDatabase.current || connectionStartupTimedOut));
   const connectionMessage = !internetAvailable ? "Nema konekcije" : "Nema konekcije, povezujem se...";
 
   useEffect(() => {
-    let messageTimer;
-    const showMessageAfterDelay = () => {
-      window.clearTimeout(messageTimer);
-      messageTimer = window.setTimeout(() => setConnectionMessageVisible(true), 2500);
+    let startupTimer;
+    const waitForInitialConnection = () => {
+      window.clearTimeout(startupTimer);
+      startupTimer = window.setTimeout(() => {
+        if (!hasConnectedToDatabase.current && navigator.onLine) {
+          setConnectionStartupTimedOut(true);
+          setConnectionMessageVisible(true);
+        }
+      }, 5000);
     };
     const hideMessage = () => {
-      window.clearTimeout(messageTimer);
+      window.clearTimeout(startupTimer);
       setConnectionMessageVisible(false);
     };
     const handleOnline = () => setInternetAvailable(true);
@@ -109,23 +116,39 @@ export default function App() {
       setDatabaseConnected(false);
       setConnectionMessageVisible(true);
     };
-    if (navigator.onLine) showMessageAfterDelay();
-    else setConnectionMessageVisible(true);
+    if (navigator.onLine) waitForInitialConnection();
+    else {
+      setConnectionStartupTimedOut(true);
+      setConnectionMessageVisible(true);
+    }
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
     const unsubscribe = onValue(infoConnected(), (snapshot) => {
       const connected = snapshot.val() === true;
       setDatabaseConnected(connected);
-      if (connected && navigator.onLine) hideMessage();
-      else if (navigator.onLine) showMessageAfterDelay();
-      else setConnectionMessageVisible(true);
+      if (connected && navigator.onLine) {
+        hasConnectedToDatabase.current = true;
+        setConnectionStartupTimedOut(false);
+        hideMessage();
+      } else if (!navigator.onLine) {
+        setConnectionStartupTimedOut(true);
+        setConnectionMessageVisible(true);
+      } else if (hasConnectedToDatabase.current) {
+        setConnectionMessageVisible(true);
+      } else {
+        waitForInitialConnection();
+      }
     }, () => {
       setDatabaseConnected(false);
-      if (navigator.onLine) showMessageAfterDelay();
-      else setConnectionMessageVisible(true);
+      if (hasConnectedToDatabase.current) setConnectionMessageVisible(true);
+      else if (navigator.onLine) waitForInitialConnection();
+      else {
+        setConnectionStartupTimedOut(true);
+        setConnectionMessageVisible(true);
+      }
     });
     return () => {
-      window.clearTimeout(messageTimer);
+      window.clearTimeout(startupTimer);
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
       unsubscribe();

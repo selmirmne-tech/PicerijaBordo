@@ -173,6 +173,7 @@ export default function Obracun() {
   const [sold, setSold] = useState({});
   const [added, setAdded] = useState({});
   const soldInputsRef = useRef([]);
+  const additionalFieldsRef = useRef([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -180,6 +181,7 @@ export default function Obracun() {
   const [fields, setFields] = useState({ kuhinja: "0", dnevnice: "0", osoblje: "0", kuca: "0", smjena: "", konobari: "" });
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
+  const [pendingLatestReport, setPendingLatestReport] = useState(null);
   const [dialog, setDialog] = useState(null);
   const [dialogError, setDialogError] = useState("");
   const [form, setForm] = useState({ naziv: "", jedinica_mjere: "", stanje_prethodno: "", ubaceno: "", kolicina: "", cijena: "" });
@@ -226,14 +228,32 @@ export default function Obracun() {
     if (!times.length) { setSelectedTime(""); return; }
     if (!times.includes(selectedTime)) setSelectedTime(times[0]);
   }, [times, selectedTime]);
+  useEffect(() => {
+    if (!pendingLatestReport) return;
+    const savedReport = objectValue(objectValue(history[pendingLatestReport.date])[pendingLatestReport.time]);
+    if (!Object.keys(savedReport).length) return;
+    setSelectedDate(pendingLatestReport.date);
+    setSelectedTime(pendingLatestReport.time);
+    setPendingLatestReport(null);
+  }, [history, pendingLatestReport]);
 
   const currentHistory = objectValue(objectValue(history[selectedDate])[selectedTime]);
   const historyItems = cleanItems(currentHistory.artikli);
   const savedByName = usersById[String(currentHistory.sacuvano_od_uid || "")] || "Nepoznato";
+  const historyWaiterNames = String(currentHistory.konobari ?? "")
+    .replace(/^Ukupna zarada od poslednjeg reseta\s*:?\s*/i, "")
+    .trim();
   const advanceReportRow = (event, index) => {
     if (event.key !== "Enter") return;
     event.preventDefault();
     const nextInput = soldInputsRef.current[index + 1];
+    if (nextInput) nextInput.focus();
+    else event.currentTarget.blur();
+  };
+  const advanceAdditionalField = (event, index) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    const nextInput = additionalFieldsRef.current[index + 1];
     if (nextInput) nextInput.focus();
     else event.currentTarget.blur();
   };
@@ -300,6 +320,9 @@ export default function Obracun() {
       const { date, time } = currentKeys();
       Object.entries(report).forEach(([key, value]) => { updates[`Forma/${date}/${time}/${key}`] = value; });
       await update(rootRestoran(), updates);
+      setSelectedDate(date);
+      setSelectedTime(time);
+      setPendingLatestReport({ date, time });
       setNotice("Obračun je uspješno sačuvan.");
       showSuccessAnimation("Obračun je uspješno sačuvan.");
       setSold(Object.fromEntries(latest.map((item) => [item.id, "0"])));
@@ -350,7 +373,7 @@ export default function Obracun() {
     ["Prihodi", [["Obračun pića", currentHistory.ukupno], ["Kuhinja", currentHistory.kuhinja], ["Ukupno", currentHistory.zbir]]],
     ["Rashod", [["Dnevnice", currentHistory.dnevnice], ["Osoblje", currentHistory.osoblje], ["Kuća", currentHistory.kuca], ["Zbir", currentHistory.rashod]]],
     ["Zarada", [["Zarada", currentHistory.zarada]]],
-    ["Smjena / Konobari", [["Smjena", currentHistory.smjena], ["Konobari", currentHistory.konobari]]],
+    ["Smjena / Konobari", [["Smjena", currentHistory.smjena], ["Konobari", historyWaiterNames]]],
   ];
   const summaryValue = (value) => value === null || value === undefined || value === "" ? "" : typeof value === "number" ? money(value) : String(value);
 
@@ -410,7 +433,7 @@ export default function Obracun() {
         </table></div>
         <h3 style={{ margin: "16px 0 9px", fontSize: 15, color: "#172b4d" }}>Dodatni podaci obračuna</h3>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(165px,1fr))", gap: 10 }}>
-          {[["smjena", "Smjena (npr. Prva smjena)", "text"], ["konobari", "Konobari (imena)", "text"], ["kuhinja", "Kuhinja — iznos zarade", "decimal"], ["dnevnice", "Dnevnice", "decimal"], ["osoblje", "Osoblje", "decimal"], ["kuca", "Kuća", "decimal"]].map(([key, label, type]) => <label key={key} style={{ display: "grid", gap: 5, color: "#62736c", fontSize: 12, fontWeight: 750 }}>{label}<input style={inputStyle} inputMode={type === "decimal" ? "decimal" : undefined} enterKeyHint="next" value={fields[key]} disabled={!canReport} onFocus={(event) => { if (type === "decimal" && event.target.value === "0") setFields((current) => ({ ...current, [key]: "" })); }} onBlur={(event) => { if (type === "decimal" && event.target.value === "") setFields((current) => ({ ...current, [key]: "0" })); }} onChange={(event) => setFields((current) => ({ ...current, [key]: event.target.value }))} /></label>)}
+          {[["smjena", "Smjena (npr. Prva smjena)", "text"], ["konobari", "Konobari (imena)", "text"], ["kuhinja", "Kuhinja — iznos zarade", "decimal"], ["dnevnice", "Dnevnice", "decimal"], ["osoblje", "Osoblje", "decimal"], ["kuca", "Kuća", "decimal"]].map(([key, label, type], index) => <label key={key} style={{ display: "grid", gap: 5, color: "#62736c", fontSize: 12, fontWeight: 750 }}>{label}<input ref={(node) => { additionalFieldsRef.current[index] = node; }} style={inputStyle} inputMode={type === "decimal" ? "decimal" : undefined} enterKeyHint="next" value={fields[key]} disabled={!canReport} onFocus={(event) => { if (type === "decimal" && event.target.value === "0") setFields((current) => ({ ...current, [key]: "" })); }} onBlur={(event) => { if (type === "decimal" && event.target.value === "") setFields((current) => ({ ...current, [key]: "0" })); }} onKeyDown={(event) => advanceAdditionalField(event, index)} onChange={(event) => setFields((current) => ({ ...current, [key]: event.target.value }))} /></label>)}
         </div>
         <button style={{ ...buttonStyle, display: "block", width: "100%", marginTop: 14, minHeight: 48, color: "white", background: "#176b55", borderColor: "#176b55", fontWeight: 800 }} disabled={saving || loading || !items.length} onClick={saveReport}>{saving ? "Čuvam obračun…" : "Sačuvaj obračun"}</button>
       </section>
