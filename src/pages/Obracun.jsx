@@ -3,12 +3,12 @@ import { get, onValue, update } from "firebase/database";
 import { artikliRestoran, formaRestoran, rootRestoran, usersRestoran } from "../firebase/refs";
 
 const pageStyle = {
-  minHeight: "100vh", boxSizing: "border-box", padding: "18px clamp(10px, 1.4vw, 22px) 40px",
+  width: "100%", minHeight: "100vh", boxSizing: "border-box", padding: "18px clamp(8px, 1.2vw, 18px) 40px",
   background: "#f4f7f6", color: "#17231f", fontFamily: "Inter,system-ui,sans-serif",
 };
 const panelStyle = {
   background: "white", border: "1px solid #e2eae6", borderRadius: 16,
-  padding: 16, boxShadow: "0 6px 20px #173d310a",
+  padding: "clamp(9px, 1.2vw, 16px)", boxShadow: "0 6px 20px #173d310a",
 };
 const buttonStyle = {
   border: "1px solid #d8e3de", borderRadius: 10, padding: "9px 13px", background: "white",
@@ -20,6 +20,7 @@ const inputStyle = {
 };
 const headerCell = { padding: "10px 9px", background: "#176b55", color: "white", textAlign: "left", whiteSpace: "nowrap", fontSize: 12 };
 const cell = { padding: "9px", borderBottom: "1px solid #e6ece9", textAlign: "left", verticalAlign: "middle", fontSize: 13 };
+const entryCell = { ...cell, padding: "7px 5px", fontSize: 12, overflowWrap: "anywhere" };
 
 const objectValue = (value) => {
   if (Array.isArray(value)) return Object.fromEntries(value.map((item, index) => [String(index), item]).filter(([, item]) => item != null));
@@ -352,7 +353,7 @@ export default function Obracun() {
   </thead>;
 
   return <main style={pageStyle}>
-    <div style={{ width: "100%", maxWidth: 1800, margin: "0 auto" }}>
+    <div style={{ width: "100%", minWidth: 0, margin: "0 auto" }}>
       <header style={{ marginBottom: 14 }}><h1 style={{ margin: "4px 0", fontSize: 28 }}>Obračun artikala</h1><p style={{ margin: 0, color: "#718078", fontSize: 14 }}>{isAdmin ? "Pregled stanja, istorije i dnevnog obračuna." : "Unos i čuvanje dnevnog obračuna."}</p></header>
       {(error || notice) && <div role={error ? "alert" : "status"} style={{ ...panelStyle, marginBottom: 12, padding: "11px 14px", color: error ? "#982e2a" : "#176b55", background: error ? "#fff5f4" : "#f0f8f3" }}>{error || notice}</div>}
 
@@ -395,9 +396,9 @@ export default function Obracun() {
       <section className="accounting-panel" style={panelStyle}>
         <h2 style={{ margin: "0 0 5px", fontSize: 18 }}>4. Unos obračuna</h2>
         <p style={{ margin: "0 0 12px", color: "#687974", fontSize: 13 }}>Unesite prodatu i dodatnu količinu po artiklu.</p>
-        <div style={{ overflowX: "auto" }}><table style={{ width: "100%", minWidth: 560, borderCollapse: "collapse", tableLayout: "fixed" }}>
-          <thead><tr>{[["#", "10%"], ["Ime artikla", "50%"], ["Prodato", "20%"], ["Dodaj", "20%"]].map(([heading, width]) => <th key={heading} style={{ ...headerCell, width, textAlign: "left" }}>{heading}</th>)}</tr></thead>
-          <tbody>{loading ? <tr><td style={cell} colSpan={4}>Učitavam artikle…</td></tr> : items.length ? items.map((item, index) => <tr key={item.id} style={{ background: index % 2 ? "#f7faf8" : "white" }}><td style={cell}>{index + 1}</td><td style={{ ...cell, fontWeight: 700 }}>{item.naziv}</td><td style={cell}><input aria-label={`Prodato ${item.naziv}`} style={inputStyle} inputMode="decimal" value={sold[item.id] ?? "0"} onChange={(event) => setSold((current) => ({ ...current, [item.id]: event.target.value }))} /></td><td style={cell}><input aria-label={`Dodaj ${item.naziv}`} style={inputStyle} inputMode="decimal" value={added[item.id] ?? "0"} disabled={!canReport} onChange={(event) => setAdded((current) => ({ ...current, [item.id]: event.target.value }))} /></td></tr>) : <tr><td style={cell} colSpan={4}>Prvo dodajte artikle.</td></tr>}</tbody>
+        <div style={{ width: "100%", minWidth: 0, overflowX: "auto" }}><table style={{ width: "100%", minWidth: 0, borderCollapse: "collapse", tableLayout: "fixed" }}>
+          <thead><tr>{[["#", "10%"], ["Ime artikla", "50%"], ["Prodato", "20%"], ["Dodaj", "20%"]].map(([heading, width]) => <th key={heading} style={{ ...headerCell, width, padding: "8px 5px", fontSize: 11, whiteSpace: "normal", overflowWrap: "anywhere", textAlign: "left" }}>{heading}</th>)}</tr></thead>
+          <tbody>{loading ? <tr><td style={entryCell} colSpan={4}>Učitavam artikle…</td></tr> : items.length ? items.map((item, index) => <tr key={item.id} style={{ background: index % 2 ? "#f7faf8" : "white" }}><td style={entryCell}>{index + 1}</td><td style={{ ...entryCell, fontWeight: 700 }}>{item.naziv}</td><td style={entryCell}><input aria-label={`Prodato ${item.naziv}`} style={{ ...inputStyle, minWidth: 0, padding: "7px 4px", fontSize: 13 }} inputMode="decimal" value={sold[item.id] ?? "0"} onChange={(event) => setSold((current) => ({ ...current, [item.id]: event.target.value }))} /></td><td style={entryCell}><input aria-label={`Dodaj ${item.naziv}`} style={{ ...inputStyle, minWidth: 0, padding: "7px 4px", fontSize: 13 }} inputMode="decimal" value={added[item.id] ?? "0"} disabled={!canReport} onChange={(event) => setAdded((current) => ({ ...current, [item.id]: event.target.value }))} /></td></tr>) : <tr><td style={entryCell} colSpan={4}>Prvo dodajte artikle.</td></tr>}</tbody>
         </table></div>
         <h3 style={{ margin: "16px 0 9px", fontSize: 15, color: "#172b4d" }}>Dodatni podaci obračuna</h3>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(165px,1fr))", gap: 10 }}>
