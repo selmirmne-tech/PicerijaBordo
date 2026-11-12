@@ -22,7 +22,13 @@ const getUser = () => {
   try {
     const data = localStorage.getItem("user");
     if (!data || data === "undefined" || data === "null") return null;
-    return JSON.parse(data);
+    const user = JSON.parse(data);
+    // Clear the account previously inserted by the removed automatic test login.
+    if (String(user?.email || "").trim().toLowerCase() === "test@vasrestoran.com") {
+      localStorage.removeItem("user");
+      return null;
+    }
+    return user;
   } catch {
     return null;
   }
