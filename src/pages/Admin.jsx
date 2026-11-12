@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { onValue, update } from "firebase/database";
 import { menuRestoran } from "../firebase/refs";
+import { sentenceCase } from "./animationText";
 
 const styles = {
   page: { minHeight: "100vh", width: "100%", boxSizing: "border-box", background: "#f4f7f6", color: "#17231f", padding: "18px clamp(8px, 1.2vw, 20px) 100px", fontFamily: "Inter,system-ui,sans-serif" },
@@ -458,7 +459,7 @@ export default function Admin() {
                 <path d="M14 27 L22 35 L39 16" stroke="black" pathLength="100" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" className="animate-drawCheck" />
               </svg>
             </div>
-            <h1 style={{ marginTop: 30, color: "white", fontSize: 32, fontWeight: 900, animation: "textUp .45s ease-out" }}>{successText}</h1>
+            <h1 style={{ marginTop: 30, color: "white", fontSize: 32, fontWeight: 900, animation: "textUp .45s ease-out" }}>{sentenceCase(successText)}</h1>
           </div>
         </div>}
         {modal && <div role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setModal(null); }} style={{ position: "fixed", zIndex: 10, inset: 0, background: "#101b17a6", display: "flex", justifyContent: "center", alignItems: "center", padding: 16 }}>

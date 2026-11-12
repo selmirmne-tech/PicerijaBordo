@@ -981,7 +981,7 @@ fontSize:42,
 fontWeight:900
 }}
 >
-RESETOVANO
+Resetovano
 </h1>
 
 

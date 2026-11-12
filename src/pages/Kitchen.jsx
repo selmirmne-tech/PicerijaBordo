@@ -23,6 +23,7 @@ import {
   mjeseciRestoran,
   waiterMonthStatistics,
 } from "../firebase/refs";
+import { sentenceCase } from "./animationText";
 
 import * as N from "../firebase/nodes";
 
@@ -1151,7 +1152,7 @@ style={{
 		   
         }}
       >
-        {successAnimationTitle}
+        {sentenceCase(successAnimationTitle)}
       </h1>
 
     </div>

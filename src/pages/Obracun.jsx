@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { get, onValue, update } from "firebase/database";
 import { artikliRestoran, formaRestoran, rootRestoran, usersRestoran } from "../firebase/refs";
+import { sentenceCase } from "./animationText";
 
 const pageStyle = {
   width: "100%", minHeight: "100vh", boxSizing: "border-box", padding: "18px clamp(8px, 1.2vw, 18px) 40px",
@@ -443,7 +444,7 @@ export default function Obracun() {
         <div className="animate-checkCircle" style={{ width: 112, height: 112, margin: "0 auto", borderRadius: "50%", background: "#f97316", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 50px rgba(249,115,22,.6)" }}>
           <svg width="62" height="62" viewBox="0 0 52 52" fill="none" aria-hidden="true"><path d="M14 27 L22 35 L39 16" stroke="black" pathLength="100" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" className="animate-drawCheck" /></svg>
         </div>
-        <h1 style={{ marginTop: 30, color: "white", fontSize: 32, fontWeight: 900, animation: "textUp .45s ease-out" }}>{successText}</h1>
+        <h1 style={{ marginTop: 30, color: "white", fontSize: 32, fontWeight: 900, animation: "textUp .45s ease-out" }}>{sentenceCase(successText)}</h1>
       </div>
     </div>}
     {dialog && <div role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDialog(null); }} style={{ position: "fixed", zIndex: 20, inset: 0, background: "#101b17a6", display: "grid", placeItems: "center", padding: 14 }}>

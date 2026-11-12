@@ -1197,7 +1197,7 @@ animate-textUp
           fontWeight: 900,
         }}
       >
-        NARUČENO
+        Naručeno
       </h1>
 
 
