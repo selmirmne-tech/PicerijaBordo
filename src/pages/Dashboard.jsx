@@ -1,16 +1,25 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { update } from "firebase/database";
-import { child } from "firebase/database";
-import { usersRestoran } from "../firebase/refs";
-import { onValue } from "firebase/database";
-import { rootRestoran } from "../firebase/refs";
+import { child, get, onValue, update } from "firebase/database";
+import { rootRestoran, usersRestoran } from "../firebase/refs";
 import { auth } from "../firebase/config";
-import { get } from "firebase/database";
+import { Info, LogOut, Menu, X } from "lucide-react";
+
+const readLocalUser = () => {
+  try {
+    const data = localStorage.getItem("user");
+    if (!data || data === "undefined" || data === "null") return null;
+    return JSON.parse(data);
+  } catch {
+    return null;
+  }
+};
+
 export default function Dashboard() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(readLocalUser);
   const [toast, setToast] = useState("");
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef(null);
   const navigate = useNavigate();
   const showToast = (message) => {
     setToast(message);
@@ -29,16 +38,14 @@ useEffect(() => {
 
       if (!data || data === "undefined" || data === "null") {
         setUser(null);
-        setLoading(false);
         return;
       }
 
       const localUser = JSON.parse(data);
+      setUser(localUser);
       const uid = auth.currentUser?.uid || localUser.uid;
 
       if (!uid) {
-        setUser(localUser);
-        setLoading(false);
         return;
       }
 
@@ -58,14 +65,27 @@ useEffect(() => {
 
     } catch (error) {
       console.error("DASHBOARD USER ERROR:", error);
-      setUser(null);
-    } finally {
-      setLoading(false);
     }
   };
 
   loadUser();
 }, []);
+
+useEffect(() => {
+  if (!accountMenuOpen) return undefined;
+  const closeOnOutsideClick = (event) => {
+    if (!accountMenuRef.current?.contains(event.target)) setAccountMenuOpen(false);
+  };
+  const closeOnEscape = (event) => {
+    if (event.key === "Escape") setAccountMenuOpen(false);
+  };
+  document.addEventListener("pointerdown", closeOnOutsideClick);
+  document.addEventListener("keydown", closeOnEscape);
+  return () => {
+    document.removeEventListener("pointerdown", closeOnOutsideClick);
+    document.removeEventListener("keydown", closeOnEscape);
+  };
+}, [accountMenuOpen]);
 
 
 
@@ -147,38 +167,16 @@ useEffect(() => {
     return () => clearTimeout(t);
   }, []);
 
-  if (loading) {
-    return (
-      <div style={{
-        position: "fixed",
-        inset: 0,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center"
-      }}>
-        Loading...
-      </div>
-    );
-  }
-
   const Card = ({ icon, title, onClick }) => (
-    <div
-      onClick={onClick}
-      style={{
-        background: "#fff",
-        borderRadius: 18,
-        boxShadow: "0 3px 10px rgba(0,0,0,0.10)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 8,
-        cursor: "pointer"
-      }}
-    >
+    <button type="button" onClick={onClick} style={{
+      width: "100%", minWidth: 0, minHeight: 0, height: "100%", boxSizing: "border-box", border: "1px solid #e5ebe8", borderRadius: 18,
+      padding: 16, background: "#fff", boxShadow: "0 4px 16px rgba(23,61,49,.06)",
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      gap: 9, color: "#173d31", cursor: "pointer", font: "inherit", transition: "transform .18s ease, box-shadow .18s ease",
+    }}>
       <div style={{ fontSize: 32 }}>{icon}</div>
-      <div style={{ fontSize: 15, fontWeight: "600" }}>{title}</div>
-    </div>
+      <div style={{ fontSize: 15, fontWeight: 700, textAlign: "center" }}>{title}</div>
+    </button>
   );
 
   return (
@@ -270,74 +268,52 @@ Kontaktirajte administratora
   
   
   
-    <div style={{
-      position: "fixed",
-      inset: 0,
-      background: "#f2f2f2",
-      padding: 10,
-      display: "flex",
-      flexDirection: "column"
-    }}>
+    <div style={{ minHeight: "100vh", boxSizing: "border-box", background: "#f3f6f5", padding: 10, display: "flex", flexDirection: "column" }}>
+      <header style={{ width: "100%", boxSizing: "border-box", margin: "0 0 10px", padding: "14px 18px", borderRadius: 14, background: "linear-gradient(115deg, #0b6b5b, #008577)", color: "white", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, boxShadow: "0 10px 28px rgba(0,91,77,.18)" }}>
+        <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 12 }}>
+          <div aria-hidden="true" style={{ width: 42, height: 42, flex: "0 0 42px", borderRadius: 14, display: "grid", placeItems: "center", background: "rgba(255,255,255,.18)", fontSize: 18, fontWeight: 850 }}>{String(user?.ime || "U").trim().slice(0, 1).toLocaleUpperCase()}</div>
+          <div style={{ minWidth: 0, display: "grid", gap: 3 }}>
+            <strong style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 15 }}>{user?.ime || "Korisnik"}</strong>
+            <span style={{ color: "rgba(255,255,255,.78)", fontSize: 12 }}>{user?.titula || "Nalog"}</span>
+          </div>
+        </div>
+        <div ref={accountMenuRef} style={{ position: "relative", flex: "0 0 auto" }}>
+          <button type="button" aria-label={accountMenuOpen ? "Zatvori meni naloga" : "Otvori meni naloga"} aria-haspopup="menu" aria-expanded={accountMenuOpen} onClick={() => setAccountMenuOpen((open) => !open)} style={{ width: 44, height: 44, border: "1px solid rgba(255,255,255,.3)", borderRadius: 13, display: "grid", placeItems: "center", color: "white", background: "rgba(255,255,255,.14)", cursor: "pointer" }}>
+            {accountMenuOpen ? <X size={22} /> : <Menu size={23} />}
+          </button>
+          {accountMenuOpen && <div role="menu" style={{ position: "absolute", top: "calc(100% + 10px)", right: 0, zIndex: 20, width: 220, padding: 7, border: "1px solid #e2eae6", borderRadius: 15, background: "white", boxShadow: "0 16px 40px rgba(18,38,31,.18)" }}>
+            <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); navigate("/about"); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 11, border: 0, borderRadius: 10, padding: "11px 12px", background: "white", color: "#233b33", textAlign: "left", font: "inherit", cursor: "pointer" }}><Info size={18} /> Informacije</button>
+            <button type="button" role="menuitem" onClick={async () => {
+              if (!window.confirm("Da li ste sigurni da želite da se odjavite?")) return;
+              setAccountMenuOpen(false);
+              const data = localStorage.getItem("user");
+              if (data) {
+                try {
+                  const currentUser = JSON.parse(data);
+                  await update(child(usersRestoran(), currentUser.uid), { fcmToken: "" });
+                } catch (error) {
+                  console.log("Logout FCM delete error:", error);
+                }
+              }
+              localStorage.removeItem("user");
+              localStorage.removeItem("fcmToken");
+              window.dispatchEvent(new Event("user-logout"));
+              navigate("/", { replace: true });
+            }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 11, border: 0, borderRadius: 10, padding: "11px 12px", background: "white", color: "#a32d31", textAlign: "left", font: "inherit", cursor: "pointer" }}><LogOut size={18} /> Odjava</button>
+          </div>}
+        </div>
+      </header>
 
-      <div style={{
-        background: "#008577",
-        color: "white",
-        padding: 12,
-        borderRadius: 14,
-        marginBottom: 10
-      }}>
-        <div>{user?.ime}</div>
-        <div>{user?.titula}</div>
-      </div>
-
-      <div style={{
-        flex: 1,
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: 10
-      }}>
-
+      <div style={{ width: "100%", flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gridTemplateRows: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
         <Card icon="📄✏️" title="Naruči hranu" onClick={() => navigate("/order")} />
         <Card icon="👨‍🍳" title="Kuhinja" onClick={() => navigate("/kitchen")} />
         <Card icon="📊" title="Statistika" onClick={openStats} />
         <Card icon="📄" title="Računi" onClick={() => navigate("/Racuni")} />
         <Card icon="🍽️" title="Upravljanje menijem" onClick={openAdmin} />
         <Card icon="🧾" title="Obračun artikala" onClick={openAccounting} />
-        <Card icon="ℹ️" title="Informacije" onClick={() => navigate("/about")} />
-
-       <Card
-  icon="🚪"
-  title="Logout"
-  onClick={async () => {
-    const data = localStorage.getItem("user");
-
-    if (data) {
-      try {
-        const user = JSON.parse(data);
-
-        // 🔥 BRISANJE TOKENA IZ BAZE
-        await update(child(usersRestoran(), user.uid), {
-          fcmToken: "",
-          
-        });
-      } catch (e) {
-        console.log("Logout FCM delete error:", e);
-      }
-    }
-
-    // 🔥 LOCAL CLEANUP
-    localStorage.removeItem("user");
-    localStorage.removeItem("fcmToken");
-
-    window.dispatchEvent(new Event("user-logout"));
-
-    navigate("/", { replace: true });
-  }}
-/>
-
       </div>
     </div>
-      {toast && <div role="status" style={{ position: "fixed", zIndex: 100, left: "50%", bottom: 28, transform: "translateX(-50%)", background: "#222", color: "#fff", padding: "12px 18px", borderRadius: 24, boxShadow: "0 6px 22px #0004", whiteSpace: "nowrap" }}>{toast}</div>}
+    {toast && <div role="status" style={{ position: "fixed", zIndex: 100, left: "50%", bottom: 28, transform: "translateX(-50%)", background: "#222", color: "#fff", padding: "12px 18px", borderRadius: 24, boxShadow: "0 6px 22px #0004", whiteSpace: "nowrap" }}>{toast}</div>}
 	</>
   );
 }
