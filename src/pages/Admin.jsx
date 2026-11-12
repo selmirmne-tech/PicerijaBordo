@@ -451,11 +451,11 @@ export default function Admin() {
 
         {dirty && <div style={{ position: "fixed", zIndex: 5, left: 0, right: 0, bottom: 0, background: "#ffffffed", borderTop: "1px solid #dce5e1", padding: "11px 16px", display: "flex", justifyContent: "center", gap: 12, alignItems: "center", backdropFilter: "blur(10px)" }}><span style={{ color: "#53675f", fontSize: 13 }}>Imaš nesačuvanih izmjena</span><button style={{ ...styles.button, background: "#176b55", color: "white", borderColor: "#176b55" }} disabled={saving} onClick={save}>{saving ? "Čuvam…" : "Sačuvaj meni"}</button></div>}
 
-        {showSuccess && <div className="animate-fadeIn" style={{ position: "fixed", inset: 0, zIndex: 30, pointerEvents: "auto", background: "rgba(0,0,0,.88)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        {showSuccess && <div className="animate-fadeIn" style={{ position: "fixed", inset: 0, zIndex: 30, pointerEvents: "auto", background: "rgba(0,0,0,.78)", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ textAlign: "center" }}>
             <div className="animate-checkCircle" style={{ width: 112, height: 112, margin: "0 auto", borderRadius: "50%", background: "#f97316", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 50px rgba(249,115,22,.6)" }}>
               <svg width="70" height="70" viewBox="0 0 52 52" fill="none" aria-hidden="true">
-                <path d="M14 27 L22 35 L39 16" stroke="black" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" className="animate-drawCheck" />
+                <path d="M14 27 L22 35 L39 16" stroke="black" pathLength="100" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" className="animate-drawCheck" />
               </svg>
             </div>
             <h1 style={{ marginTop: 30, color: "white", fontSize: 32, fontWeight: 900, animation: "textUp .45s ease-out" }}>{successText}</h1>

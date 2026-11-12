@@ -16,7 +16,7 @@ import Obracun from "./pages/Obracun";
 import About from "./pages/about";
 import Uslovi from "./pages/Uslovi";
 import Politika from "./pages/Politika";
-import { appUpdateRestoran } from "./firebase/refs";
+import { appUpdateRestoran, infoConnected } from "./firebase/refs";
 import { auth } from "./firebase/config";
 import { APP_VERSION } from "./config/appVersion";
 
@@ -82,11 +82,45 @@ export default function App() {
   
   const [user, setUser] = useState(getUser());
   const [versionBlockReason, setVersionBlockReason] = useState("");
+  const [internetAvailable, setInternetAvailable] = useState(() => navigator.onLine);
+  const [databaseConnected, setDatabaseConnected] = useState(false);
   const [firebaseAuthUser, setFirebaseAuthUser] = useState(null);
   const [firebaseAuthReady, setFirebaseAuthReady] = useState(false);
   const firebaseAuthUid = firebaseAuthUser?.uid ?? null;
   const verifiedUser = firebaseAuthReady && firebaseAuthUid ? user : null;
   const activeUser = firebaseAuthReady ? verifiedUser : user;
+  const connectionUnavailable = !internetAvailable || !databaseConnected;
+  const connectionMessage = !internetAvailable ? "Nema konekcije" : "Nema konekcije, povezujem se...";
+
+  useEffect(() => {
+    const handleOnline = () => setInternetAvailable(true);
+    const handleOffline = () => {
+      setInternetAvailable(false);
+      setDatabaseConnected(false);
+    };
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    const unsubscribe = onValue(infoConnected(), (snapshot) => {
+      setDatabaseConnected(snapshot.val() === true);
+    }, () => setDatabaseConnected(false));
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!connectionUnavailable) return undefined;
+    const rootOverflow = document.documentElement.style.overflow;
+    const bodyOverflow = document.body.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.documentElement.style.overflow = rootOverflow;
+      document.body.style.overflow = bodyOverflow;
+    };
+  }, [connectionUnavailable]);
 
   useEffect(() => onAuthStateChanged(auth, (authUser) => {
     setFirebaseAuthUser(authUser);
@@ -145,6 +179,7 @@ useEffect(() => {
   return (
     <BrowserRouter>
       <DashboardBackGuard />
+      <div inert={connectionUnavailable}>
       {verifiedUser && versionBlockReason ? (
         <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, background: "#f4f7f6", fontFamily: "Inter,system-ui,sans-serif", color: "#17231f" }}>
           <section role="alert" aria-labelledby="version-block-title" style={{ width: "100%", maxWidth: 480, padding: 28, borderRadius: 18, background: "white", border: "1px solid #e2eae6", boxShadow: "0 18px 50px #173d3118", textAlign: "center" }}>
@@ -269,6 +304,19 @@ useEffect(() => {
         {/* fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>}
+      </div>
+      {connectionUnavailable && <>
+        <div aria-hidden="true" style={{ position: "fixed", zIndex: 9998, inset: 0, background: "rgba(255, 193, 7, .22)", backdropFilter: "blur(2px)", cursor: "wait" }} />
+        <div role="status" aria-live="polite" style={{ position: "fixed", zIndex: 9999, top: 10, left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, width: "max-content", maxWidth: "calc(100% - 24px)", boxSizing: "border-box", border: "1px solid #e6b800", borderRadius: 12, padding: "10px 16px", background: "#fff3cd", color: "#664d03", boxShadow: "0 4px 16px #0002", fontWeight: 800, textAlign: "center", whiteSpace: "normal" }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path className="wifi-wave wifi-wave-1" d="M2.5 8.5a15 15 0 0 1 19 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <path className="wifi-wave wifi-wave-2" d="M5.8 12a9.8 9.8 0 0 1 12.4 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <path className="wifi-wave wifi-wave-3" d="M9.2 15.5a4.7 4.7 0 0 1 5.6 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <circle cx="12" cy="19" r="1.4" fill="currentColor" />
+          </svg>
+          <span>{connectionMessage}</span>
+        </div>
+      </>}
     </BrowserRouter>
   );
 }

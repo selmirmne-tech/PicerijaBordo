@@ -2,15 +2,22 @@
 
 @keyframes fadeIn {
   from {
-    opacity:0;
-    backdrop-filter:blur(0px);
+    opacity: 0;
   }
 
   to {
-    opacity:1;
-    backdrop-filter:blur(15px);
+    opacity: 1;
   }
 }
+
+@keyframes wifiWave {
+  0%, 100% { opacity: .3; }
+  50% { opacity: 1; }
+}
+
+.wifi-wave-1 { animation: wifiWave 1.2s ease-in-out infinite; }
+.wifi-wave-2 { animation: wifiWave 1.2s ease-in-out .18s infinite; }
+.wifi-wave-3 { animation: wifiWave 1.2s ease-in-out .36s infinite; }
 
 
 @keyframes checkCircle {

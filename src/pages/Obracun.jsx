@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { get, onValue, update } from "firebase/database";
 import { artikliRestoran, formaRestoran, rootRestoran, usersRestoran } from "../firebase/refs";
 
@@ -172,11 +172,12 @@ export default function Obracun() {
   const [usersById, setUsersById] = useState({});
   const [sold, setSold] = useState({});
   const [added, setAdded] = useState({});
+  const soldInputsRef = useRef([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [fields, setFields] = useState({ kuhinja: "", dnevnice: "", osoblje: "", kuca: "", smjena: "", konobari: "" });
+  const [fields, setFields] = useState({ kuhinja: "0", dnevnice: "0", osoblje: "0", kuca: "0", smjena: "", konobari: "" });
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [dialog, setDialog] = useState(null);
@@ -229,6 +230,13 @@ export default function Obracun() {
   const currentHistory = objectValue(objectValue(history[selectedDate])[selectedTime]);
   const historyItems = cleanItems(currentHistory.artikli);
   const savedByName = usersById[String(currentHistory.sacuvano_od_uid || "")] || "Nepoznato";
+  const advanceReportRow = (event, index) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    const nextInput = soldInputsRef.current[index + 1];
+    if (nextInput) nextInput.focus();
+    else event.currentTarget.blur();
+  };
   const saveReport = async () => {
     setError(""); setNotice("");
     if (!canReport) { setError("Nemate pravo da sačuvate obračun."); return; }
@@ -296,7 +304,7 @@ export default function Obracun() {
       showSuccessAnimation("Obračun je uspješno sačuvan.");
       setSold(Object.fromEntries(latest.map((item) => [item.id, "0"])));
       setAdded(Object.fromEntries(latest.map((item) => [item.id, "0"])));
-      if (canReport) setFields((current) => ({ ...current, kuhinja: "", dnevnice: "", osoblje: "", kuca: "" }));
+      if (canReport) setFields({ smjena: "", konobari: "", kuhinja: "0", dnevnice: "0", osoblje: "0", kuca: "0" });
     } catch (saveError) {
       setError(`Obračun nije sačuvan: ${saveError.message}`);
     } finally { setSaving(false); }
@@ -398,19 +406,19 @@ export default function Obracun() {
         <p style={{ margin: "0 0 12px", color: "#687974", fontSize: 13 }}>Unesite prodatu i dodatnu količinu po artiklu.</p>
         <div style={{ width: "100%", minWidth: 0, overflowX: "auto" }}><table style={{ width: "100%", minWidth: 0, borderCollapse: "collapse", tableLayout: "fixed" }}>
           <thead><tr>{[["#", "10%"], ["Ime artikla", "50%"], ["Prodato", "20%"], ["Dodaj", "20%"]].map(([heading, width]) => <th key={heading} style={{ ...headerCell, width, padding: "8px 5px", fontSize: 11, whiteSpace: "normal", overflowWrap: "anywhere", textAlign: "left" }}>{heading}</th>)}</tr></thead>
-          <tbody>{loading ? <tr><td style={entryCell} colSpan={4}>Učitavam artikle…</td></tr> : items.length ? items.map((item, index) => <tr key={item.id} style={{ background: index % 2 ? "#f7faf8" : "white" }}><td style={entryCell}>{index + 1}</td><td style={{ ...entryCell, fontWeight: 700 }}>{item.naziv}</td><td style={entryCell}><input aria-label={`Prodato ${item.naziv}`} style={{ ...inputStyle, minWidth: 0, padding: "7px 4px", fontSize: 13 }} inputMode="decimal" value={sold[item.id] ?? "0"} onChange={(event) => setSold((current) => ({ ...current, [item.id]: event.target.value }))} /></td><td style={entryCell}><input aria-label={`Dodaj ${item.naziv}`} style={{ ...inputStyle, minWidth: 0, padding: "7px 4px", fontSize: 13 }} inputMode="decimal" value={added[item.id] ?? "0"} disabled={!canReport} onChange={(event) => setAdded((current) => ({ ...current, [item.id]: event.target.value }))} /></td></tr>) : <tr><td style={entryCell} colSpan={4}>Prvo dodajte artikle.</td></tr>}</tbody>
+          <tbody>{loading ? <tr><td style={entryCell} colSpan={4}>Učitavam artikle…</td></tr> : items.length ? items.map((item, index) => <tr key={item.id} style={{ background: index % 2 ? "#f7faf8" : "white" }}><td style={entryCell}>{index + 1}</td><td style={{ ...entryCell, fontWeight: 700 }}>{item.naziv}</td><td style={entryCell}><input ref={(node) => { soldInputsRef.current[index] = node; }} aria-label={`Prodato ${item.naziv}`} style={{ ...inputStyle, minWidth: 0, padding: "7px 4px", fontSize: 13 }} inputMode="decimal" enterKeyHint="next" value={sold[item.id] ?? "0"} onFocus={(event) => { if (event.target.value === "0") setSold((current) => ({ ...current, [item.id]: "" })); }} onBlur={(event) => { if (event.target.value === "") setSold((current) => ({ ...current, [item.id]: "0" })); }} onKeyDown={(event) => advanceReportRow(event, index)} onChange={(event) => setSold((current) => ({ ...current, [item.id]: event.target.value }))} /></td><td style={entryCell}><input aria-label={`Dodaj ${item.naziv}`} style={{ ...inputStyle, minWidth: 0, padding: "7px 4px", fontSize: 13 }} inputMode="decimal" enterKeyHint="next" value={added[item.id] ?? "0"} disabled={!canReport} onFocus={(event) => { if (event.target.value === "0") setAdded((current) => ({ ...current, [item.id]: "" })); }} onBlur={(event) => { if (event.target.value === "") setAdded((current) => ({ ...current, [item.id]: "0" })); }} onKeyDown={(event) => advanceReportRow(event, index)} onChange={(event) => setAdded((current) => ({ ...current, [item.id]: event.target.value }))} /></td></tr>) : <tr><td style={entryCell} colSpan={4}>Prvo dodajte artikle.</td></tr>}</tbody>
         </table></div>
         <h3 style={{ margin: "16px 0 9px", fontSize: 15, color: "#172b4d" }}>Dodatni podaci obračuna</h3>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(165px,1fr))", gap: 10 }}>
-          {[["smjena", "Smjena (npr. Prva smjena)", "text"], ["konobari", "Konobari (imena)", "text"], ["kuhinja", "Kuhinja — iznos zarade", "decimal"], ["dnevnice", "Dnevnice", "decimal"], ["osoblje", "Osoblje", "decimal"], ["kuca", "Kuća", "decimal"]].map(([key, label, type]) => <label key={key} style={{ display: "grid", gap: 5, color: "#62736c", fontSize: 12, fontWeight: 750 }}>{label}<input style={inputStyle} inputMode={type === "decimal" ? "decimal" : undefined} value={fields[key]} disabled={!canReport} onChange={(event) => setFields((current) => ({ ...current, [key]: event.target.value }))} /></label>)}
+          {[["smjena", "Smjena (npr. Prva smjena)", "text"], ["konobari", "Konobari (imena)", "text"], ["kuhinja", "Kuhinja — iznos zarade", "decimal"], ["dnevnice", "Dnevnice", "decimal"], ["osoblje", "Osoblje", "decimal"], ["kuca", "Kuća", "decimal"]].map(([key, label, type]) => <label key={key} style={{ display: "grid", gap: 5, color: "#62736c", fontSize: 12, fontWeight: 750 }}>{label}<input style={inputStyle} inputMode={type === "decimal" ? "decimal" : undefined} enterKeyHint="next" value={fields[key]} disabled={!canReport} onFocus={(event) => { if (type === "decimal" && event.target.value === "0") setFields((current) => ({ ...current, [key]: "" })); }} onBlur={(event) => { if (type === "decimal" && event.target.value === "") setFields((current) => ({ ...current, [key]: "0" })); }} onChange={(event) => setFields((current) => ({ ...current, [key]: event.target.value }))} /></label>)}
         </div>
         <button style={{ ...buttonStyle, display: "block", width: "100%", marginTop: 14, minHeight: 48, color: "white", background: "#176b55", borderColor: "#176b55", fontWeight: 800 }} disabled={saving || loading || !items.length} onClick={saveReport}>{saving ? "Čuvam obračun…" : "Sačuvaj obračun"}</button>
       </section>
     </div>
-    {showSuccess && <div className="animate-fadeIn" role="status" style={{ position: "fixed", inset: 0, zIndex: 30, background: "rgba(0,0,0,.88)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    {showSuccess && <div className="animate-fadeIn" role="status" style={{ position: "fixed", inset: 0, zIndex: 30, background: "rgba(0,0,0,.78)", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ textAlign: "center", padding: 24 }}>
         <div className="animate-checkCircle" style={{ width: 112, height: 112, margin: "0 auto", borderRadius: "50%", background: "#f97316", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 50px rgba(249,115,22,.6)" }}>
-          <svg width="62" height="62" viewBox="0 0 52 52" aria-hidden="true"><path d="M14 27 L22 35 L39 16" stroke="black" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" className="animate-drawCheck" /></svg>
+          <svg width="62" height="62" viewBox="0 0 52 52" fill="none" aria-hidden="true"><path d="M14 27 L22 35 L39 16" stroke="black" pathLength="100" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" className="animate-drawCheck" /></svg>
         </div>
         <h1 style={{ marginTop: 30, color: "white", fontSize: 32, fontWeight: 900, animation: "textUp .45s ease-out" }}>{successText}</h1>
       </div>
