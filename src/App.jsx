@@ -230,11 +230,16 @@ useEffect(() => {
   };
 }, []);
 
-  useEffect(() => {
-    Notification.requestPermission().then((permission) => {
-      console.log("Permission:", permission);
-    });
-  }, []);
+  
+useEffect(() => {
+  if ("Notification" in window) {
+    console.log(
+      "Notification permission:",
+      Notification.permission
+    );
+  }
+}, []);
+
 
   return (
     <BrowserRouter>
