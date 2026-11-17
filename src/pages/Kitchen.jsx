@@ -1318,25 +1318,12 @@ export default function Kitchen() {
           onScroll={handleScroll}
           className="kitchen-orders-grid"
         >
-          {orders.length === 0 ? (
-            <div className="kitchen-empty">
-              <ChefHat size={42} color="#94a3b8" />
+          
+{orders.length === 0 ? (
+  null
+) : (
 
-              <div
-                style={{
-                  fontSize: 18,
-                  fontWeight: 800,
-                  color: "#334155",
-                }}
-              >
-                Trenutno nema aktivnih narudžbi
-              </div>
-
-              <div style={{ fontSize: 13, color: "#64748b" }}>
-                Nove narudžbe će se prikazati ovdje.
-              </div>
-            </div>
-          ) : (
+          
             orders.map((order) => {
               const waitMinutes = getWaitMinutes(order, now);
 
