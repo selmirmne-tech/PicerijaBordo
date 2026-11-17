@@ -25,7 +25,7 @@ import {
 
 import { sentenceCase } from "./animationText";
 import * as N from "../firebase/nodes";
-import { ChefHat, Trash2, X } from "lucide-react";
+import { ChefHat, Trash2, X, Clock, Info } from "lucide-react";
 
 export default function Kitchen() {
   useEffect(() => {
@@ -33,6 +33,7 @@ export default function Kitchen() {
   }, []);
 
   const scrollRef = useRef(null);
+
   const [showTop, setShowTop] = useState(false);
   const [showBottom, setShowBottom] = useState(true);
 
@@ -64,17 +65,19 @@ export default function Kitchen() {
   const canDelete = userRole === "Administrator";
 
   const [completedAnimation, setCompletedAnimation] = useState(false);
+
   const [successAnimationTitle, setSuccessAnimationTitle] =
     useState("Narudžba je izdata");
+
   const [successAnimationType, setSuccessAnimationType] =
     useState("issued");
+
+  const [now, setNow] = useState(Date.now());
 
   const showToast = (msg) => {
     setToast(msg);
     setTimeout(() => setToast(null), 4000);
   };
-
-  const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -115,6 +118,14 @@ export default function Kitchen() {
     if (navigator.vibrate) {
       navigator.vibrate(80);
     }
+  };
+
+  const formatPrice = (value) => {
+    const price = Number(
+      String(value ?? "0").replace(",", ".")
+    );
+
+    return `${(Number.isFinite(price) ? price : 0).toFixed(2)} €`;
   };
 
   const sendPushNotification = async (userId, orderId) => {
@@ -835,217 +846,593 @@ export default function Kitchen() {
     selectedOrder?.orderId === id;
 
   return (
-    <div
-      style={{
-        height: "100vh",
-        background: "linear-gradient(90deg, #22c55e, #3b82f6)",
-        padding: 20,
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-      }}
-    >
-      <div
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 1000,
-          background: "rgba(30,41,59,.92)",
-          backdropFilter: "blur(18px)",
-          color: "#fff",
-          padding: "18px 22px",
-          borderRadius: 22,
-          marginBottom: 20,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          border: "1px solid rgba(255,255,255,.08)",
-          boxShadow: "0 12px 30px rgba(0,0,0,.12)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
-          <ChefHat size={18} />
-          <b>Kuhinja</b>
-        </div>
+    <>
+      <style>{`
+        * {
+          box-sizing: border-box;
+        }
 
-        <div
-          style={{
-            background: "linear-gradient(135deg,#ffb100,#ff8a00)",
-            borderRadius: 20,
-            fontWeight: "bold",
-            color: "black",
-            padding: "6px 14px",
-            fontSize: 15,
-            boxShadow: "0 8px 20px rgba(255,153,0,.35)",
-          }}
-        >
-          {orders.length}
-        </div>
-      </div>
+        .kitchen-page {
+          height: 100vh;
+          height: 100dvh;
+          min-height: 0;
+          padding: clamp(10px, 3vw, 20px);
+          background: linear-gradient(135deg, #16a34a 0%, #2563eb 100%);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          font-family: Arial, Helvetica, sans-serif;
+        }
 
-      <div
-        ref={scrollRef}
-        onScroll={handleScroll}
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          scrollbarWidth: "none",
-          msOverflowStyle: "none",
-          display: "flex",
-          flexDirection: "column",
-          gap: 12,
-        }}
-      >
-        {orders.map((order) => (
+        .kitchen-header {
+          flex-shrink: 0;
+          background: rgba(30, 41, 59, .94);
+          backdrop-filter: blur(18px);
+          color: #fff;
+          padding: 15px 19px;
+          border-radius: 20px;
+          margin-bottom: 14px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          border: 1px solid rgba(255,255,255,.12);
+          box-shadow: 0 10px 28px rgba(0,0,0,.16);
+        }
+
+        .kitchen-orders-grid {
+          flex: 1;
+          min-height: 0;
+          overflow-y: auto;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+          align-content: start;
+          gap: 14px;
+          padding: 2px 2px 18px;
+        }
+
+        .kitchen-orders-grid::-webkit-scrollbar {
+          display: none;
+        }
+
+        .kitchen-order-card {
+          min-width: 0;
+          background: #fff;
+          border-radius: 20px;
+          padding: 16px;
+          cursor: pointer;
+          transition: transform .2s ease, box-shadow .2s ease, border .2s ease;
+          border: 1px solid #e5e7eb;
+          box-shadow: 0 7px 20px rgba(0,0,0,.09);
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .kitchen-order-card:active {
+          transform: scale(.985);
+        }
+
+        .kitchen-card-heading {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 10px;
+        }
+
+        .kitchen-customer-name {
+          min-width: 0;
+          color: #111827;
+          font-size: 18px;
+          font-weight: 800;
+          line-height: 1.3;
+          overflow-wrap: anywhere;
+        }
+
+        .kitchen-time-badge {
+          flex-shrink: 0;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 7px 10px;
+          background: #eff6ff;
+          color: #1d4ed8;
+          border: 1px solid #dbeafe;
+          border-radius: 12px;
+          font-size: 13px;
+          font-weight: 800;
+        }
+
+        .kitchen-info-box {
+          background: #fffbeb;
+          border: 1px solid #fcd34d;
+          color: #78350f;
+          padding: 11px 12px;
+          border-radius: 13px;
+          font-size: 13px;
+          line-height: 1.5;
+          white-space: pre-wrap;
+          overflow-wrap: anywhere;
+        }
+
+        .kitchen-items-box {
+          min-width: 0;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 14px;
+          padding: 13px;
+          color: #1f2937;
+          font-size: 14px;
+          line-height: 1.65;
+          white-space: pre-wrap;
+          overflow-wrap: anywhere;
+        }
+
+        .kitchen-card-footer {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          flex-wrap: wrap;
+          margin-top: 1px;
+        }
+
+        .kitchen-wait-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 11px;
+          border-radius: 11px;
+          font-size: 12px;
+          font-weight: 800;
+        }
+
+        .kitchen-price {
+          margin-left: auto;
+          flex-shrink: 0;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 9px 15px;
+          min-height: 42px;
+          background: #dcfce7;
+          border: 1px solid #86efac;
+          border-radius: 12px;
+          color: #15803d;
+          font-size: 19px;
+          font-weight: 900;
+          white-space: nowrap;
+          box-shadow: 0 3px 9px rgba(22,163,74,.09);
+        }
+
+        .kitchen-empty {
+          grid-column: 1 / -1;
+          min-height: 220px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          background: rgba(255,255,255,.95);
+          border-radius: 20px;
+          color: #475569;
+          text-align: center;
+          padding: 25px;
+          box-shadow: 0 8px 24px rgba(0,0,0,.08);
+        }
+
+        .kitchen-modal-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 3000;
+          background: rgba(15,23,42,.62);
+          backdrop-filter: blur(5px);
+          display: flex;
+          align-items: flex-end;
+          justify-content: center;
+          padding: 0;
+        }
+
+        .kitchen-modal {
+          background: #fff;
+          width: 100%;
+          max-width: 650px;
+          max-height: 92vh;
+          max-height: 92dvh;
+          overflow-y: auto;
+          overscroll-behavior: contain;
+          padding: 20px;
+          padding-bottom: max(22px, env(safe-area-inset-bottom));
+          border-radius: 25px 25px 0 0;
+          box-shadow: 0 -15px 50px rgba(0,0,0,.2);
+        }
+
+        .kitchen-modal-top {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 15px;
+        }
+
+        .kitchen-modal-title {
+          margin: 0;
+          color: #111827;
+          font-size: 21px;
+          font-weight: 900;
+          overflow-wrap: anywhere;
+        }
+
+        .kitchen-close-button {
+          flex-shrink: 0;
+          width: 40px;
+          height: 40px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 0;
+          border-radius: 12px;
+          background: #f1f5f9;
+          color: #334155;
+          cursor: pointer;
+        }
+
+        .kitchen-modal-items {
+          margin-top: 12px;
+          padding: 14px;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 14px;
+          color: #1f2937;
+          font-size: 15px;
+          line-height: 1.7;
+          white-space: pre-wrap;
+          overflow-wrap: anywhere;
+        }
+
+        .kitchen-modal-price-row {
+          display: flex;
+          justify-content: flex-end;
+          margin-top: 14px;
+        }
+
+        .kitchen-modal-price {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 11px 18px;
+          background: #dcfce7;
+          border: 1px solid #86efac;
+          border-radius: 12px;
+          color: #15803d;
+          font-size: 23px;
+          font-weight: 900;
+          white-space: nowrap;
+        }
+
+        .kitchen-modal-time {
+          margin-top: 12px;
+          color: #64748b;
+          font-size: 13px;
+        }
+
+        .kitchen-action-button {
+          width: 100%;
+          min-height: 49px;
+          margin-top: 11px;
+          padding: 12px 16px;
+          border: 0;
+          border-radius: 13px;
+          color: #fff;
+          font-size: 15px;
+          font-weight: 800;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 9px;
+          transition: opacity .2s ease, transform .2s ease;
+        }
+
+        .kitchen-action-button:active {
+          transform: scale(.985);
+        }
+
+        .kitchen-action-button:disabled {
+          cursor: not-allowed;
+          opacity: .55;
+        }
+
+        .kitchen-confirm-box {
+          margin-top: 13px;
+          padding: 13px;
+          background: #fff7ed;
+          border: 1px solid #fed7aa;
+          border-radius: 14px;
+        }
+
+        .kitchen-confirm-title {
+          text-align: center;
+          color: #9a3412;
+          font-size: 14px;
+          font-weight: 800;
+          margin-bottom: 10px;
+        }
+
+        .kitchen-confirm-actions {
+          display: flex;
+          gap: 10px;
+        }
+
+        .kitchen-confirm-actions button {
+          flex: 1;
+          min-height: 45px;
+          border: 0;
+          border-radius: 11px;
+          color: #fff;
+          font-weight: 800;
+          font-size: 14px;
+          cursor: pointer;
+        }
+
+        .kitchen-floating-button {
+          position: absolute;
+          right: 15px;
+          width: 43px;
+          height: 43px;
+          border-radius: 50%;
+          border: none;
+          background: linear-gradient(135deg,#3b82f6,#1d4ed8);
+          color: white;
+          font-size: 23px;
+          font-weight: 900;
+          box-shadow: 0 6px 20px rgba(0,0,0,.3);
+          cursor: pointer;
+          pointer-events: auto;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .kitchen-toast {
+          position: fixed;
+          bottom: max(18px, env(safe-area-inset-bottom));
+          left: 50%;
+          transform: translateX(-50%);
+          max-width: calc(100vw - 30px);
+          width: max-content;
+          background: #111827;
+          color: white;
+          padding: 12px 17px;
+          border-radius: 12px;
+          z-index: 10000;
+          text-align: center;
+          font-size: 14px;
+          font-weight: 600;
+          box-shadow: 0 8px 25px rgba(0,0,0,.25);
+        }
+
+        @keyframes kitchen-spin {
+          to { transform: rotate(360deg); }
+        }
+
+        @media (min-width: 700px) {
+          .kitchen-modal-overlay {
+            align-items: center;
+            padding: 20px;
+          }
+
+          .kitchen-modal {
+            border-radius: 24px;
+            padding: 24px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .kitchen-page {
+            padding: 9px;
+          }
+
+          .kitchen-header {
+            padding: 13px 15px;
+            border-radius: 16px;
+            margin-bottom: 10px;
+          }
+
+          .kitchen-orders-grid {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 10px;
+          }
+
+          .kitchen-order-card {
+            padding: 13px;
+            border-radius: 17px;
+            gap: 10px;
+          }
+
+          .kitchen-customer-name {
+            font-size: 16px;
+          }
+
+          .kitchen-time-badge {
+            padding: 6px 8px;
+            font-size: 12px;
+          }
+
+          .kitchen-items-box {
+            padding: 11px;
+            font-size: 14px;
+          }
+
+          .kitchen-price {
+            padding: 8px 12px;
+            min-height: 39px;
+            font-size: 18px;
+          }
+
+          .kitchen-modal {
+            padding: 17px;
+            padding-bottom: max(20px, env(safe-area-inset-bottom));
+          }
+
+          .kitchen-modal-title {
+            font-size: 19px;
+          }
+        }
+      `}</style>
+
+      <div className="kitchen-page">
+        <div className="kitchen-header">
           <div
-            key={order.orderId}
-            onClick={() => setSelectedOrder(order)}
             style={{
-              background: "#fff",
-              borderRadius: 22,
-              padding: 18,
-              cursor: "pointer",
-              transition: ".25s",
-              border: isSelected(order.orderId)
-                ? "2px solid #2563eb"
-                : "1px solid #e6eaf0",
-              boxShadow: isSelected(order.orderId)
-                ? "0 15px 35px rgba(37,99,235,.18)"
-                : "0 6px 18px rgba(0,0,0,.05)",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              fontSize: 18,
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
+            <ChefHat size={23} />
+            <b>Kuhinja</b>
+          </div>
+
+          <div
+            style={{
+              background: "linear-gradient(135deg,#ffb100,#ff8a00)",
+              borderRadius: 13,
+              fontWeight: 900,
+              color: "#111827",
+              padding: "7px 15px",
+              fontSize: 16,
+              minWidth: 42,
+              textAlign: "center",
+              boxShadow: "0 5px 15px rgba(255,153,0,.25)",
+            }}
+          >
+            {orders.length}
+          </div>
+        </div>
+
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="kitchen-orders-grid"
+        >
+          {orders.length === 0 ? (
+            <div className="kitchen-empty">
+              <ChefHat size={42} color="#94a3b8" />
+
               <div
                 style={{
                   fontSize: 18,
-                  fontWeight: 700,
-                  color: "#111827",
+                  fontWeight: 800,
+                  color: "#334155",
                 }}
               >
-                {order.orderPersonName}
+                Trenutno nema aktivnih narudžbi
+              </div>
+
+              <div style={{ fontSize: 13, color: "#64748b" }}>
+                Nove narudžbe će se prikazati ovdje.
               </div>
             </div>
+          ) : (
+            orders.map((order) => {
+              const waitMinutes = getWaitMinutes(order, now);
 
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                marginTop: 10,
-                flexWrap: "wrap",
-                marginBottom: 12,
-              }}
-            >
-              <span
-                style={{
-                  background: "#eff6ff",
-                  color: "#2563eb",
-                  padding: "5px 12px",
-                  borderRadius: 20,
-                  fontSize: 12,
-                  fontWeight: 700,
-                }}
-              >
-                🕒 {getClockTime(order.time)}
-              </span>
-            </div>
+              const waitBackground =
+                waitMinutes > 20
+                  ? "#fee2e2"
+                  : waitMinutes > 10
+                  ? "#fef3c7"
+                  : "#dcfce7";
 
-            {order.addittionalInfo && (
-              <div
-                style={{
-                  marginTop: 6,
-                  fontSize: 12,
-                  background: "#fff8e6",
-                  border: "1px solid #ffd166",
-                  padding: 14,
-                  borderRadius: 16,
-                  boxShadow: "0 4px 12px rgba(255,193,7,.15)",
-                }}
-              >
-                <b>Dodatne informacije:</b>
-                <br />
-                {order.addittionalInfo}
-              </div>
-            )}
+              const waitColor =
+                waitMinutes > 20
+                  ? "#dc2626"
+                  : waitMinutes > 10
+                  ? "#b45309"
+                  : "#15803d";
 
-            <div
-              style={{
-                marginTop: 12,
-                whiteSpace: "pre-wrap",
-                background: "#f8fafc",
-                border: "1px solid #e2e8f0",
-                padding: 14,
-                borderRadius: 16,
-                fontSize: 15,
-                lineHeight: 1.7,
-              }}
-            >
-              {formatName(order.name)}
-            </div>
+              return (
+                <div
+                  key={order.orderId}
+                  className="kitchen-order-card"
+                  onClick={() => {
+                    setSelectedOrder(order);
+                    setShowDeleteConfirm(false);
+                  }}
+                  style={{
+                    border: isSelected(order.orderId)
+                      ? "2px solid #2563eb"
+                      : "1px solid #e5e7eb",
+                    boxShadow: isSelected(order.orderId)
+                      ? "0 10px 25px rgba(37,99,235,.16)"
+                      : undefined,
+                  }}
+                >
+                  <div className="kitchen-card-heading">
+                    <div className="kitchen-customer-name">
+                      {order.orderPersonName || "Bez imena"}
+                    </div>
 
-            <div
-              style={{
-                marginTop: 12,
-                padding: "12px 14px",
-                background: "#dcfce7",
-                border: "1px solid #86efac",
-                borderRadius: 14,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <b style={{ color: "#166534" }}>UKUPNO:</b>
+                    <div className="kitchen-time-badge">
+                      <Clock size={14} />
+                      {getClockTime(order.time)}
+                    </div>
+                  </div>
 
-              <strong style={{ fontSize: 21, color: "#15803d" }}>
-                {Number(
-                  String(order.totalPrice || "0").replace(",", ".")
-                ).toFixed(2)}{" "}
-                €
-              </strong>
-            </div>
+                  {order.addititonalInfo && null}
 
-            <div
-              style={{
-                marginTop: 14,
-                display: "inline-flex",
-                padding: "6px 14px",
-                borderRadius: 30,
-                fontWeight: 700,
-                fontSize: 13,
-                background:
-                  getWaitMinutes(order, now) > 20
-                    ? "#fee2e2"
-                    : getWaitMinutes(order, now) > 10
-                    ? "#fff7cc"
-                    : "#dcfce7",
-                color:
-                  getWaitMinutes(order, now) > 20
-                    ? "#dc2626"
-                    : getWaitMinutes(order, now) > 10
-                    ? "#b45309"
-                    : "#15803d",
-              }}
-            >
-              ⏱ {getWaitMinutes(order, now)} min čekanja
-            </div>
-          </div>
-        ))}
+                  {order.addittionalInfo && (
+                    <div className="kitchen-info-box">
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          marginBottom: 4,
+                          fontWeight: 800,
+                        }}
+                      >
+                        <Info size={14} />
+                        Dodatne informacije
+                      </div>
+
+                      {order.addittionalInfo}
+                    </div>
+                  )}
+
+                  <div className="kitchen-items-box">
+                    {formatName(order.name) || "Nema opisa narudžbe"}
+                  </div>
+
+                  <div className="kitchen-card-footer">
+                    <div
+                      className="kitchen-wait-badge"
+                      style={{
+                        background: waitBackground,
+                        color: waitColor,
+                      }}
+                    >
+                      <Clock size={14} />
+                      {waitMinutes} min čekanja
+                    </div>
+
+                    <div className="kitchen-price">
+                      {formatPrice(order.totalPrice)}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
 
       {selectedOrder && (
         <div
+          className="kitchen-modal-overlay"
           onClick={() => {
             if (
               loadingOrderId !== null ||
@@ -1057,118 +1444,77 @@ export default function Kitchen() {
             setSelectedOrder(null);
             setShowDeleteConfirm(false);
           }}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "flex-end",
-            zIndex: 3000,
-          }}
         >
           <div
+            className="kitchen-modal"
             onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "#fff",
-              width: "100%",
-              padding: 24,
-              borderTopLeftRadius: 30,
-              borderTopRightRadius: 30,
-              boxShadow: "0 -20px 50px rgba(0,0,0,.18)",
-            }}
           >
-            <button
-              onClick={() => {
-                if (
+            <div className="kitchen-modal-top">
+              <h3 className="kitchen-modal-title">
+                {selectedOrder.orderPersonName || "Narudžba"}
+              </h3>
+
+              <button
+                type="button"
+                className="kitchen-close-button"
+                onClick={() => {
+                  if (
+                    loadingOrderId !== null ||
+                    deletingOrderId !== null
+                  ) {
+                    return;
+                  }
+
+                  vibrate();
+                  setSelectedOrder(null);
+                  setShowDeleteConfirm(false);
+                }}
+                disabled={
                   loadingOrderId !== null ||
                   deletingOrderId !== null
-                ) {
-                  return;
                 }
-
-                vibrate();
-                setSelectedOrder(null);
-              }}
-              disabled={
-                loadingOrderId !== null ||
-                deletingOrderId !== null
-              }
-            >
-              <X />
-            </button>
-
-            <h3>{selectedOrder.orderPersonName}</h3>
+              >
+                <X size={22} />
+              </button>
+            </div>
 
             {selectedOrder.addittionalInfo && (
-              <div
-                style={{
-                  marginTop: 10,
-                  background: "#fff3cd",
-                  padding: 10,
-                  borderRadius: 10,
-                  whiteSpace: "pre-wrap",
-                  fontSize: 13,
-                }}
-              >
-                <b>Dodatne informacije:</b>
-
-                <div style={{ marginTop: 4 }}>
-                  {selectedOrder.addittionalInfo}
+              <div className="kitchen-info-box">
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    marginBottom: 4,
+                    fontWeight: 800,
+                  }}
+                >
+                  <Info size={14} />
+                  Dodatne informacije
                 </div>
+
+                {selectedOrder.addittionalInfo}
               </div>
             )}
 
-            <div
-              style={{
-                whiteSpace: "pre-wrap",
-                background: "#f8f8f8",
-                padding: 10,
-                borderRadius: 10,
-              }}
-            >
-              {formatName(selectedOrder.name)}
+            <div className="kitchen-modal-items">
+              {formatName(selectedOrder.name) || "Nema opisa narudžbe"}
+            </div>
 
-              <div
-                style={{
-                  marginTop: 12,
-                  padding: 14,
-                  background: "#ecfdf5",
-                  border: "1px solid #86efac",
-                  borderRadius: 12,
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <b style={{ color: "#166534" }}>
-                  UKUPNO ZA NAPLATU:
-                </b>
-
-                <strong
-                  style={{ fontSize: 22, color: "#15803d" }}
-                >
-                  {Number(
-                    String(
-                      selectedOrder.totalPrice || "0"
-                    ).replace(",", ".")
-                  ).toFixed(2)}{" "}
-                  €
-                </strong>
+            <div className="kitchen-modal-price-row">
+              <div className="kitchen-modal-price">
+                {formatPrice(selectedOrder.totalPrice)}
               </div>
             </div>
 
-            <div
-              style={{
-                marginTop: 8,
-                fontSize: 13,
-                opacity: 0.7,
-              }}
-            >
+            <div className="kitchen-modal-time">
               Vrijeme narudžbe:{" "}
-              {getClockTime(selectedOrder.time)}
+              <b>{getClockTime(selectedOrder.time)}</b>
             </div>
 
             <button
+              type="button"
+              className="kitchen-action-button"
               onClick={() => {
                 if (
                   !canComplete ||
@@ -1185,49 +1531,31 @@ export default function Kitchen() {
                 loadingOrderId === selectedOrder.orderId
               }
               style={{
-                width: "100%",
-                marginTop: 10,
-                padding: 12,
-                background: "blue",
-                color: "white",
-                borderRadius: 10,
-                opacity:
-                  loadingOrderId === selectedOrder.orderId
-                    ? 0.7
-                    : 1,
-                cursor:
-                  loadingOrderId === selectedOrder.orderId
-                    ? "not-allowed"
-                    : "pointer",
+                background: "linear-gradient(135deg,#2563eb,#1d4ed8)",
               }}
             >
               {loadingOrderId === selectedOrder.orderId ? (
-                <span
-                  style={{
-                    display: "flex",
-                    gap: 8,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
+                <>
                   <div
                     style={{
-                      width: 14,
-                      height: 14,
+                      width: 16,
+                      height: 16,
                       border: "2px solid white",
                       borderTop: "2px solid transparent",
                       borderRadius: "50%",
-                      animation: "spin 0.8s linear infinite",
+                      animation: "kitchen-spin .8s linear infinite",
                     }}
                   />
                   Obrada...
-                </span>
+                </>
               ) : (
                 "Završi narudžbu"
               )}
             </button>
 
             <button
+              type="button"
+              className="kitchen-action-button"
               onClick={() => {
                 if (!canDelete) return;
 
@@ -1236,37 +1564,22 @@ export default function Kitchen() {
               }}
               disabled={!canDelete}
               style={{
-                width: "100%",
-                marginTop: 10,
-                padding: 12,
-                background: "red",
-                color: "white",
-                borderRadius: 10,
-                opacity: !canDelete ? 0.5 : 1,
-                cursor: !canDelete ? "not-allowed" : "pointer",
+                background: "linear-gradient(135deg,#ef4444,#b91c1c)",
               }}
             >
+              <Trash2 size={18} />
               Obriši narudžbu
             </button>
 
             {showDeleteConfirm && (
-              <div style={{ marginTop: 10 }}>
-                <div
-                  style={{
-                    textAlign: "center",
-                    marginBottom: 10,
-                  }}
-                >
-                  Da li ste sigurni?
+              <div className="kitchen-confirm-box">
+                <div className="kitchen-confirm-title">
+                  Da li ste sigurni da želite da obrišete narudžbu?
                 </div>
 
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 10,
-                  }}
-                >
+                <div className="kitchen-confirm-actions">
                   <button
+                    type="button"
                     onClick={() => {
                       if (deletingOrderId) return;
 
@@ -1275,41 +1588,38 @@ export default function Kitchen() {
                     }}
                     disabled={Boolean(deletingOrderId)}
                     style={{
-                      flex: 1,
-                      padding: 12,
-                      background: "green",
-                      color: "white",
+                      background: "#16a34a",
                       opacity: deletingOrderId ? 0.6 : 1,
-                      cursor: deletingOrderId
-                        ? "not-allowed"
-                        : "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 8,
                     }}
                   >
                     {deletingOrderId ? (
-                      <>
-                        <div
+                      <span
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 7,
+                        }}
+                      >
+                        <span
                           style={{
                             width: 14,
                             height: 14,
                             border: "2px solid white",
                             borderTop: "2px solid transparent",
                             borderRadius: "50%",
-                            animation:
-                              "spin 0.8s linear infinite",
+                            animation: "kitchen-spin .8s linear infinite",
                           }}
                         />
                         Brišem...
-                      </>
+                      </span>
                     ) : (
-                      "Da"
+                      "Da, obriši"
                     )}
                   </button>
 
                   <button
+                    type="button"
                     onClick={() => {
                       if (deletingOrderId) return;
 
@@ -1318,14 +1628,8 @@ export default function Kitchen() {
                     }}
                     disabled={Boolean(deletingOrderId)}
                     style={{
-                      flex: 1,
-                      padding: 12,
-                      background: "red",
-                      color: "white",
+                      background: "#64748b",
                       opacity: deletingOrderId ? 0.6 : 1,
-                      cursor: deletingOrderId
-                        ? "not-allowed"
-                        : "pointer",
                     }}
                   >
                     Ne
@@ -1351,11 +1655,7 @@ export default function Kitchen() {
             justifyContent: "center",
           }}
         >
-          <div
-            style={{
-              textAlign: "center",
-            }}
-          >
+          <div style={{ textAlign: "center" }}>
             <div
               className="animate-checkCircle"
               style={{
@@ -1426,27 +1726,10 @@ export default function Kitchen() {
       >
         {showTop && (
           <button
+            type="button"
+            className="kitchen-floating-button"
             onClick={scrollToTop}
-            style={{
-              position: "absolute",
-              top: 110,
-              right: 20,
-              width: 45,
-              height: 45,
-              borderRadius: "50%",
-              border: "none",
-              background:
-                "linear-gradient(135deg,#3b82f6,#2563eb)",
-              color: "white",
-              fontSize: 24,
-              fontWeight: "900",
-              boxShadow: "0 8px 25px rgba(0,0,0,.35)",
-              cursor: "pointer",
-              pointerEvents: "auto",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
+            style={{ top: 105 }}
           >
             ↑
           </button>
@@ -1454,27 +1737,10 @@ export default function Kitchen() {
 
         {showBottom && (
           <button
+            type="button"
+            className="kitchen-floating-button"
             onClick={scrollToBottom}
-            style={{
-              position: "absolute",
-              bottom: 20,
-              right: 20,
-              width: 45,
-              height: 45,
-              borderRadius: "50%",
-              border: "none",
-              background:
-                "linear-gradient(135deg,#3b82f6,#2563eb)",
-              color: "white",
-              fontSize: 24,
-              fontWeight: "900",
-              boxShadow: "0 8px 25px rgba(0,0,0,.35)",
-              cursor: "pointer",
-              pointerEvents: "auto",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
+            style={{ bottom: 18 }}
           >
             ↓
           </button>
@@ -1482,21 +1748,10 @@ export default function Kitchen() {
       </div>
 
       {toast && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 20,
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: "black",
-            color: "white",
-            padding: 10,
-            zIndex: 10000,
-          }}
-        >
+        <div className="kitchen-toast">
           {toast}
         </div>
       )}
-    </div>
+    </>
   );
 }
